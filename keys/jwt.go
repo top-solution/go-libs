@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"io/ioutil"
+	"net/http"
+	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
 )
@@ -23,6 +26,36 @@ type JWT struct {
 }
 
 var ErrInvalidToken = errors.New("invalid token")
+
+// ReadPublicKey reads and stores a public key from a public URL
+func (j *JWT) ReadPublicKeyFromURL(url string) error {
+
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("create req: %w", err)
+	}
+
+	response, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("read pubkey from url: %w", err)
+	}
+
+	defer response.Body.Close()
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+
+	}
+	if response.StatusCode != 200 {
+		return fmt.Errorf("unable to read key: %d", response.StatusCode)
+	}
+
+	j.PublicKey, err = jwt.ParseRSAPublicKeyFromPEM([]byte(body))
+	return err
+}
 
 // ReadPublicKey reads and stores a public key used to verify JWTs
 func (j *JWT) ReadPublicKey(FS fs.ReadFileFS, path string) error {
