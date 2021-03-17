@@ -12,11 +12,11 @@ type contextKey string
 const RequestSubjectKey = contextKey("subject")
 const RequestClaimsKey = contextKey("claims")
 
-func RequestKey(keys *JWT) func(http.Handler) http.Handler {
-	return RequestKeyConditionally(keys, func(req *http.Request) bool { return true })
+func RequestJWT(keys *JWT) func(http.Handler) http.Handler {
+	return RequestJWTConditionally(keys, func(req *http.Request) bool { return true })
 }
 
-func RequestKeyConditionally(keys *JWT, enabled func(req *http.Request) bool) func(http.Handler) http.Handler {
+func RequestJWTConditionally(keys *JWT, enabled func(req *http.Request) bool) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
