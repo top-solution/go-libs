@@ -1,4 +1,4 @@
-package controllers
+package policies
 
 import (
 	"context"
@@ -21,7 +21,7 @@ func (p *Policies) IsUserAllowed(ctx context.Context, req *ladon.Request) error 
 		req.Resource = ContextService(ctx)
 	}
 	if req.Subject == "" {
-		req.Subject = keys.Subject(ctx)
+		req.Subject = keys.SubjectFromContext(ctx)
 	}
 
 	return p.LadonAuthorizer.IsUserAllowed(ctx, req)
