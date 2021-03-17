@@ -11,9 +11,10 @@ import (
 
 type Claims struct {
 	jwt.StandardClaims
-	Role  string                 `json:"role,omitempty"`
-	AppID string                 `json:"appID,omitempty"`
-	Extra map[string]interface{} `json:"extra,omitempty"`
+	Role     string                 `json:"role,omitempty"`
+	Username string                 `json:"username,omitempty"`
+	AppID    string                 `json:"appID,omitempty"`
+	Extra    map[string]interface{} `json:"extra,omitempty"`
 }
 
 type JWT struct {
