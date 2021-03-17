@@ -10,6 +10,7 @@ import (
 type contextKey string
 
 const RequestSubjectKey = contextKey("subject")
+const RequestClaimsKey = contextKey("claims")
 
 func RequestKey(keys *JWT) func(http.Handler) http.Handler {
 	return RequestKeyConditionally(keys, func(req *http.Request) bool { return true })
@@ -46,6 +47,7 @@ func RequestKeyConditionally(keys *JWT, enabled func(req *http.Request) bool) fu
 					return
 				}
 				ctx = context.WithValue(ctx, RequestSubjectKey, t.Subject)
+				ctx = context.WithValue(ctx, RequestClaimsKey, t)
 			}
 
 			h.ServeHTTP(w, r.WithContext(ctx))
@@ -59,4 +61,12 @@ func Subject(ctx context.Context) string {
 	}
 
 	return "Anonymous"
+}
+
+func JWTClaims(ctx context.Context) Claims {
+	if elem, ok := ctx.Value(RequestClaimsKey).(Claims); ok {
+		return elem
+	}
+
+	return Claims{}
 }
