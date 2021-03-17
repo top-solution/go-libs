@@ -55,7 +55,7 @@ func RequestKeyConditionally(keys *JWT, enabled func(req *http.Request) bool) fu
 	}
 }
 
-func Subject(ctx context.Context) string {
+func SubjectFromContext(ctx context.Context) string {
 	if elem, ok := ctx.Value(RequestSubjectKey).(string); ok {
 		return elem
 	}
@@ -63,7 +63,7 @@ func Subject(ctx context.Context) string {
 	return "Anonymous"
 }
 
-func JWTClaims(ctx context.Context) Claims {
+func ClaimsFromContext(ctx context.Context) Claims {
 	if elem, ok := ctx.Value(RequestClaimsKey).(Claims); ok {
 		return elem
 	}
