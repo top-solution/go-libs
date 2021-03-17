@@ -1,7 +1,8 @@
-package key
+package keys
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 )
@@ -10,8 +11,11 @@ type contextKey string
 
 const RequestUsernameKey = contextKey("username")
 
-// RequestKey adds a appID struct to the context, to be shared by the chain of middlewares
-func RequestKey(keys *JWT, enabled func(req *http.Request) bool) func(http.Handler) http.Handler {
+func RequestKey(keys *JWT) func(http.Handler) http.Handler {
+	return RequestKeyConditionally(keys, func(req *http.Request) bool { return true })
+}
+
+func RequestKeyConditionally(keys *JWT, enabled func(req *http.Request) bool) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -20,21 +24,24 @@ func RequestKey(keys *JWT, enabled func(req *http.Request) bool) func(http.Handl
 				return
 			}
 			if enabled(r) {
-				token := r.Header["X-Authorization"]
+				token := r.Header["Authorization"]
 				if token == nil || len(token) == 0 {
-					http.Error(w, "Missing jwt token", 401)
+					http.Error(w, "missing authorization header", 401)
 					return
 				}
 				tok := token[0]
 				if !strings.HasPrefix(strings.ToLower(tok), "bearer ") {
-					http.Error(w, "Token not valid", 401)
+					http.Error(w, "invalid authorization header", 401)
 					return
 				}
 
 				tok = strings.Split(tok, " ")[1]
 
-				t, err := keys.GetParsedToken(tok)
+				t, err := keys.ParseAndValidateToken(tok)
 				if err != nil {
+					if errors.Is(err, ErrInvalidToken) {
+						http.Error(w, err.Error(), 403)
+					}
 					http.Error(w, err.Error(), 500)
 					return
 				}
@@ -44,4 +51,12 @@ func RequestKey(keys *JWT, enabled func(req *http.Request) bool) func(http.Handl
 			h.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func Username(ctx context.Context) string {
+	if elem, ok := ctx.Value(RequestUsernameKey).(string); ok {
+		return elem
+	}
+
+	return ""
 }
