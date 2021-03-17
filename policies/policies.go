@@ -5,6 +5,7 @@ import (
 
 	"github.com/ory/ladon"
 	"gitlab.com/top-solution/collins-go-libs/authorizer"
+	"gitlab.com/top-solution/collins-go-libs/keys"
 	goa "goa.design/goa/v3/pkg"
 )
 
@@ -18,6 +19,9 @@ func (p *Policies) IsUserAllowed(ctx context.Context, req *ladon.Request) error 
 	}
 	if req.Resource == "" {
 		req.Resource = ContextService(ctx)
+	}
+	if req.Subject == "" {
+		req.Subject = keys.Subject(ctx)
 	}
 
 	return p.LadonAuthorizer.IsUserAllowed(ctx, req)

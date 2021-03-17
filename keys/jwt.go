@@ -9,6 +9,13 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
+type Claims struct {
+	jwt.StandardClaims
+	Role  string                 `json:"role,omitempty"`
+	AppID string                 `json:"appID,omitempty"`
+	Extra map[string]interface{} `json:"extra,omitempty"`
+}
+
 type JWT struct {
 	PublicKey  *rsa.PublicKey
 	PrivateKey *rsa.PrivateKey
@@ -36,6 +43,18 @@ func (j *JWT) ReadPrivateKey(FS fs.ReadFileFS, path string) error {
 	return err
 }
 
+func (j *JWT) TokenFromClaims(claims Claims, name string) (string, error) {
+	token := jwt.New(jwt.GetSigningMethod("RS256"))
+	token.Claims = claims
+
+	result, err := token.SignedString(j.PrivateKey)
+	if err != nil {
+		return "", fmt.Errorf("sign token: %w", err)
+	}
+
+	return result, nil
+}
+
 func (j *JWT) TokenFromMap(data map[string]interface{}, name string) (string, error) {
 	token := jwt.New(jwt.GetSigningMethod("RS256"))
 	token.Claims = jwt.MapClaims(data)
@@ -48,7 +67,7 @@ func (j *JWT) TokenFromMap(data map[string]interface{}, name string) (string, er
 	return result, nil
 }
 
-func (j *JWT) ParseAndValidateToken(tokenString string) (map[string]string, error) {
+func (j *JWT) ParseAndValidateToken(tokenString string) (Claims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
@@ -57,15 +76,10 @@ func (j *JWT) ParseAndValidateToken(tokenString string) (map[string]string, erro
 		return j.PublicKey, nil
 	})
 
-	claims, ok := token.Claims.(jwt.MapClaims)
+	claims, ok := token.Claims.(Claims)
 	if !ok || !token.Valid {
-		return nil, fmt.Errorf("%w: %s", ErrInvalidToken, err.Error())
+		return Claims{}, fmt.Errorf("%w: %s", ErrInvalidToken, err.Error())
 	}
 
-	result := map[string]string{}
-	for k, d := range claims {
-		result[k] = fmt.Sprintf("%v", d)
-	}
-
-	return result, nil
+	return claims, nil
 }

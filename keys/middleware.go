@@ -9,7 +9,7 @@ import (
 
 type contextKey string
 
-const RequestUsernameKey = contextKey("username")
+const RequestSubjectKey = contextKey("subject")
 
 func RequestKey(keys *JWT) func(http.Handler) http.Handler {
 	return RequestKeyConditionally(keys, func(req *http.Request) bool { return true })
@@ -45,7 +45,7 @@ func RequestKeyConditionally(keys *JWT, enabled func(req *http.Request) bool) fu
 					http.Error(w, err.Error(), 500)
 					return
 				}
-				ctx = context.WithValue(ctx, RequestUsernameKey, t[string(RequestUsernameKey)])
+				ctx = context.WithValue(ctx, RequestSubjectKey, t.Subject)
 			}
 
 			h.ServeHTTP(w, r.WithContext(ctx))
@@ -53,10 +53,10 @@ func RequestKeyConditionally(keys *JWT, enabled func(req *http.Request) bool) fu
 	}
 }
 
-func Username(ctx context.Context) string {
-	if elem, ok := ctx.Value(RequestUsernameKey).(string); ok {
+func Subject(ctx context.Context) string {
+	if elem, ok := ctx.Value(RequestSubjectKey).(string); ok {
 		return elem
 	}
 
-	return ""
+	return "Anonymous"
 }
