@@ -3,20 +3,37 @@ package keys
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 )
 
 type contextKey string
 
+type JWTValidator func(req *http.Request, claims Claims) error
+type JWTEnabler func(req *http.Request) bool
+
 const RequestSubjectKey = contextKey("subject")
 const RequestClaimsKey = contextKey("claims")
 
 func RequestJWT(keys *JWT) func(http.Handler) http.Handler {
-	return RequestJWTConditionally(keys, func(req *http.Request) bool { return true })
+	return RequestJWTWithValidation(keys, func(req *http.Request, claims Claims) error { return nil })
 }
 
-func RequestJWTConditionally(keys *JWT, enabled func(req *http.Request) bool) func(http.Handler) http.Handler {
+func RequestJWTWithAppID(keys *JWT, appID string) func(http.Handler) http.Handler {
+	return RequestJWTWithValidation(keys, func(req *http.Request, claims Claims) error {
+		if claims.AppID != appID {
+			return fmt.Errorf("invalid appID: got %s, wanted %s", claims.AppID, appID)
+		}
+		return nil
+	})
+}
+
+func RequestJWTWithValidation(keys *JWT, validator JWTValidator) func(http.Handler) http.Handler {
+	return RequestJWTWithCondition(keys, validator, func(req *http.Request) bool { return true })
+}
+
+func RequestJWTWithCondition(keys *JWT, validator JWTValidator, enabler JWTEnabler) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -24,7 +41,7 @@ func RequestJWTConditionally(keys *JWT, enabled func(req *http.Request) bool) fu
 				h.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
-			if enabled(r) {
+			if enabler(r) {
 				token := r.Header["Authorization"]
 				if token == nil || len(token) == 0 {
 					http.Error(w, "missing authorization header", 401)
@@ -46,6 +63,13 @@ func RequestJWTConditionally(keys *JWT, enabled func(req *http.Request) bool) fu
 					http.Error(w, err.Error(), 500)
 					return
 				}
+
+				err = validator(r, t)
+				if err != nil {
+					http.Error(w, err.Error(), 403)
+					return
+				}
+
 				ctx = context.WithValue(ctx, RequestSubjectKey, t.Subject)
 				ctx = context.WithValue(ctx, RequestClaimsKey, t)
 			}
