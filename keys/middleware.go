@@ -16,24 +16,23 @@ type JWTEnabler func(req *http.Request) bool
 const RequestSubjectKey = contextKey("subject")
 const RequestClaimsKey = contextKey("claims")
 
-func RequestJWT(keys *JWT) func(http.Handler) http.Handler {
-	return RequestJWTWithValidation(keys, func(req *http.Request, claims Claims) error { return nil })
-}
+var AlwaysEnabled = func(req *http.Request) bool { return true }
+var NoValidation = func(req *http.Request, claims Claims) error { return nil }
 
-func RequestJWTWithAppID(keys *JWT, appID string) func(http.Handler) http.Handler {
-	return RequestJWTWithValidation(keys, func(req *http.Request, claims Claims) error {
+func ValidateAppID(appID string) JWTValidator {
+	return func(req *http.Request, claims Claims) error {
 		if claims.AppID != appID {
 			return fmt.Errorf("invalid appID: got %s, wanted %s", claims.AppID, appID)
 		}
 		return nil
-	})
+	}
 }
 
-func RequestJWTWithValidation(keys *JWT, validator JWTValidator) func(http.Handler) http.Handler {
-	return RequestJWTWithCondition(keys, validator, func(req *http.Request) bool { return true })
+func EnableWithPrefix(prefix string) JWTEnabler {
+	return func(req *http.Request) bool { return strings.HasPrefix(req.URL.Path, prefix) }
 }
 
-func RequestJWTWithCondition(keys *JWT, validator JWTValidator, enabler JWTEnabler) func(http.Handler) http.Handler {
+func RequestJWT(keys *JWT, validator JWTValidator, enabler JWTEnabler) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
