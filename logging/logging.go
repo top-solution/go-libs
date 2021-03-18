@@ -1,8 +1,10 @@
 package logging
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"time"
 
 	log "github.com/inconshreveable/log15"
@@ -41,4 +43,19 @@ func InitFileLogger(logger log.Logger, logPath string) error {
 		}
 	}
 	return nil
+}
+
+type GoaServer interface {
+	Service() string
+	Use(m func(http.Handler) http.Handler)
+}
+
+func LogGoaEndpoints(srv GoaServer) {
+	r := reflect.ValueOf(srv)
+	mounts := reflect.Indirect(r).FieldByName("Mounts")
+
+	for i := 0; i < mounts.Len(); i++ {
+		m := reflect.Indirect(mounts.Index(i))
+		log.Info("mounted", "svc", srv.Service(), "method", m.FieldByName("Method"), "verb", m.FieldByName("Verb"), "pattern", m.FieldByName("Pattern"))
+	}
 }
