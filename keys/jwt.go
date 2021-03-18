@@ -121,18 +121,20 @@ func (j *JWT) TokenFromMap(data map[string]interface{}) (string, error) {
 	return result, nil
 }
 
-func (j *JWT) ParseAndValidateToken(tokenString string) (Claims, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+func (j *JWT) ParseAndValidateToken(tokenString string) (claims Claims, err error) {
+	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
 
 		return j.PublicKey, nil
 	})
+	if err != nil {
+		return claims, fmt.Errorf("%w: %s", ErrInvalidToken, err.Error())
+	}
 
-	claims, ok := token.Claims.(Claims)
-	if !ok || !token.Valid {
-		return Claims{}, fmt.Errorf("%w: %s", ErrInvalidToken, err.Error())
+	if !token.Valid {
+		return claims, ErrInvalidToken
 	}
 
 	return claims, nil
