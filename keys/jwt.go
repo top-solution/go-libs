@@ -11,7 +11,7 @@ import (
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"gitlab.com/top-solution/collins-go-libs/ctxlog"
+	"gitlab.com/top-solution/collins-go-libs/logging/ctxlog"
 )
 
 type Claims struct {
