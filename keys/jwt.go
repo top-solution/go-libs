@@ -1,6 +1,7 @@
 package keys
 
 import (
+	"context"
 	"crypto/rsa"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	"gitlab.com/top-solution/collins-go-libs/ctxlog"
 )
 
 type Claims struct {
@@ -26,6 +28,24 @@ type JWT struct {
 }
 
 var ErrInvalidToken = errors.New("invalid token")
+
+// RefreshPublicKeyFromURL reads and stores a public key from a public URL, refreshing it periodically
+// Caution: this function never returns
+func (j *JWT) RefreshPublicKeyFromURL(ctx context.Context, url string) error {
+	// Fetch public key right away
+	err := j.ReadPublicKeyFromURL(url)
+	if err != nil {
+		return fmt.Errorf("unable to read public key from %s: %w", url, err)
+	}
+	// 	Fetch public key once a day
+	for range time.Tick(time.Hour * 24) {
+		err := j.ReadPublicKeyFromURL(url)
+		if err != nil {
+			ctxlog.Error(ctx, fmt.Errorf("unable to read public key from %s: %w", url, err))
+		}
+	}
+	return nil
+}
 
 // ReadPublicKey reads and stores a public key from a public URL
 func (j *JWT) ReadPublicKeyFromURL(url string) error {
