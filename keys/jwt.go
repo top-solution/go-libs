@@ -35,13 +35,13 @@ func (j *JWT) StartPublicKeyRefresh(ctx context.Context, url string) {
 		// Fetch public key right away
 		err := j.ReadPublicKeyFromURL(url)
 		if err != nil {
-			ctxlog.Error(ctx, fmt.Errorf("unable to read public key from %s: %w", url, err))
+			ctxlog.Error(ctx, "msg", "StartPublicKeyRefresh: unable to read public key", "url", url, "err", err)
 		}
 		// 	Fetch public key once a day
 		for range time.Tick(time.Hour * 24) {
 			err := j.ReadPublicKeyFromURL(url)
 			if err != nil {
-				ctxlog.Error(ctx, fmt.Errorf("unable to read public key from %s: %w", url, err))
+				ctxlog.Error(ctx, "msg", "StartPublicKeyRefresh: unable to read public key", "url", url, "err", err)
 			}
 		}
 	}()
