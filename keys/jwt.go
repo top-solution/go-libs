@@ -97,7 +97,7 @@ func (j *JWT) ReadPrivateKey(FS fs.ReadFileFS, path string) error {
 	return err
 }
 
-func (j *JWT) TokenFromClaims(claims Claims, name string) (string, error) {
+func (j *JWT) TokenFromClaims(claims Claims) (string, error) {
 	token := jwt.New(jwt.GetSigningMethod("RS256"))
 	token.Claims = claims
 
@@ -109,7 +109,7 @@ func (j *JWT) TokenFromClaims(claims Claims, name string) (string, error) {
 	return result, nil
 }
 
-func (j *JWT) TokenFromMap(data map[string]interface{}, name string) (string, error) {
+func (j *JWT) TokenFromMap(data map[string]interface{}) (string, error) {
 	token := jwt.New(jwt.GetSigningMethod("RS256"))
 	token.Claims = jwt.MapClaims(data)
 
