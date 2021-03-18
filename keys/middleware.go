@@ -17,7 +17,7 @@ const RequestSubjectKey = contextKey("subject")
 const RequestClaimsKey = contextKey("claims")
 
 var AlwaysEnabled = func(req *http.Request) bool { return true }
-var NoValidation = func(req *http.Request, claims Claims) error { return nil }
+var NoExtraValidation = func(req *http.Request, claims Claims) error { return nil }
 
 func ValidateAppID(appID string) JWTValidator {
 	return func(req *http.Request, claims Claims) error {
