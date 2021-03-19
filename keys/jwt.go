@@ -18,6 +18,8 @@ type Claims struct {
 	jwt.StandardClaims
 	Role     string                 `json:"role,omitempty"`
 	Username string                 `json:"username,omitempty"`
+	Name     string                 `json:"name,omitempty"`
+	Lastname string                 `json:"lastname,omitempty"`
 	AppID    string                 `json:"appID,omitempty"`
 	Extra    map[string]interface{} `json:"extra,omitempty"`
 }
