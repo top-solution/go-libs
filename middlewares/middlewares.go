@@ -10,9 +10,9 @@ import (
 	"time"
 
 	log "github.com/inconshreveable/log15"
-	"gitlab.com/top-solution/collins-go-libs/logging/ctxlog"
-	"gitlab.com/top-solution/collins-go-libs/middlewares/appID"
-	"gitlab.com/top-solution/collins-go-libs/middlewares/meta"
+	"gitlab.com/top-solution/go-libs/logging/ctxlog"
+	"gitlab.com/top-solution/go-libs/middlewares/appID"
+	"gitlab.com/top-solution/go-libs/middlewares/meta"
 	goahttp "goa.design/goa/v3/http"
 	httpmdlwr "goa.design/goa/v3/http/middleware"
 	goamdlwr "goa.design/goa/v3/middleware"

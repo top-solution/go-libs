@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/ory/ladon"
-	"gitlab.com/top-solution/collins-go-libs/authorizer"
-	"gitlab.com/top-solution/collins-go-libs/keys"
+	"gitlab.com/top-solution/go-libs/authorizer"
+	"gitlab.com/top-solution/go-libs/keys"
 	goa "goa.design/goa/v3/pkg"
 )
 

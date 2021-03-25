@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	log "github.com/inconshreveable/log15"
-	"gitlab.com/top-solution/collins-go-libs/middlewares/meta"
+	"gitlab.com/top-solution/go-libs/middlewares/meta"
 	goahttp "goa.design/goa/v3/http"
 	goa "goa.design/goa/v3/pkg"
 )

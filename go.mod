@@ -1,4 +1,4 @@
-module gitlab.com/top-solution/collins-go-libs
+module gitlab.com/top-solution/go-libs
 
 go 1.16
 

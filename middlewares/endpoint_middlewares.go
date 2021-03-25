@@ -3,8 +3,8 @@ package middlewares
 import (
 	"context"
 
-	"gitlab.com/top-solution/collins-go-libs/logging/ctxlog"
-	"gitlab.com/top-solution/collins-go-libs/middlewares/meta"
+	"gitlab.com/top-solution/go-libs/logging/ctxlog"
+	"gitlab.com/top-solution/go-libs/middlewares/meta"
 	goa "goa.design/goa/v3/pkg"
 )
 
