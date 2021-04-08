@@ -51,17 +51,17 @@ type (
 		Vars(*http.Request) map[string]string
 	}
 
-	// mux is the default Muxer implementation. It leverages the
+	// Mux is the default Muxer implementation. It leverages the
 	// httptreemux router and simply substitutes the syntax used to define
 	// wildcards from ":wildcard" and "*wildcard" to "{wildcard}" and
 	// "{*wildcard}" respectively.
-	mux struct {
+	Mux struct {
 		*httptreemux.ContextMux
 	}
 )
 
 // NewMuxer returns a Muxer implementation based on the httptreemux router.
-func NewMuxer() Muxer {
+func NewMuxer() *Mux {
 	r := httptreemux.NewContextMux()
 	r.EscapeAddedRoutes = true
 	r.RedirectBehavior = httptreemux.UseHandler
@@ -71,16 +71,16 @@ func NewMuxer() Muxer {
 		w.WriteHeader(http.StatusNotFound)
 		enc.Encode(goahttp.NewErrorResponse(fmt.Errorf("404 page not found")))
 	}
-	return &mux{r}
+	return &Mux{r}
 }
 
 // Handle maps the wildcard format used by goa to the one used by httptreemux.
-func (m *mux) Handle(method, pattern string, handler http.HandlerFunc) {
+func (m *Mux) Handle(method, pattern string, handler http.HandlerFunc) {
 	m.ContextMux.Handle(method, treemuxify(pattern), handler)
 }
 
 // Vars extracts the path variables from the request context.
-func (m *mux) Vars(r *http.Request) map[string]string {
+func (m *Mux) Vars(r *http.Request) map[string]string {
 	return httptreemux.ContextParams(r.Context())
 }
 
