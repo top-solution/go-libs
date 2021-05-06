@@ -42,7 +42,7 @@ func RequestJWT(keys *JWT, validator JWTValidator, enabler JWTEnabler) func(http
 			}
 			if enabler(r) {
 				token := r.Header["Authorization"]
-				if token == nil || len(token) == 0 {
+				if len(token) == 0 {
 					http.Error(w, "missing authorization header", 401)
 					return
 				}
