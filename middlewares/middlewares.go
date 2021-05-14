@@ -112,7 +112,7 @@ func LogEnd() func(h http.Handler) http.Handler {
 			rw := httpmdlwr.CaptureResponse(w)
 			h.ServeHTTP(rw, r)
 
-			if meta.Service == "alive" && meta.Method == "alive" {
+			if meta.Service == "alive" && meta.Method == "alive" || meta.Service == "" {
 				return
 			}
 
