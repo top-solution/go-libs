@@ -22,6 +22,10 @@ func RequestAppID() func(http.Handler) http.Handler {
 				h.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
+			if r.RequestURI == "/version" {
+				h.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
 			if strings.Contains(r.URL.Path, "/api/") {
 				appID := "[missing]"
 				if _, ok := r.Header["X-App-Id"]; ok && len(r.Header["X-App-Id"]) > 0 {

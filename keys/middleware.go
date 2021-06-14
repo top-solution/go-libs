@@ -40,6 +40,10 @@ func RequestJWT(keys *JWT, validator JWTValidator, enabler JWTEnabler) func(http
 				h.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
+			if r.RequestURI == "/version" {
+				h.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
 			if enabler(r) {
 				token := r.Header["Authorization"]
 				if len(token) == 0 {
