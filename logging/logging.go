@@ -19,7 +19,7 @@ type LogsData struct {
 }
 
 func InitFileLogger(logger log.Logger, logs LogsData) error {
-	format := "2006-01-02 15:04:05.json"
+	format := "2006-01-02 15-04-05.json"
 	err := os.MkdirAll(logs.Path, os.ModePerm)
 	if err != nil {
 		return err
