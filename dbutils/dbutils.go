@@ -1,4 +1,4 @@
-package policies
+package dbutils
 
 import (
 	"database/sql"
