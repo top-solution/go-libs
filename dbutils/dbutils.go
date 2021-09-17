@@ -9,7 +9,7 @@ import (
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-func parseSorting(data []string, mapping map[string]string) ([]string, error) {
+func ParseSorting(data []string, mapping map[string]string) ([]string, error) {
 	sortList := []string{}
 	for _, elem := range data {
 		direction := " ASC"
@@ -40,7 +40,7 @@ var filterMap = map[string]string{
 	"notIn":     " NOT IN ?",
 }
 
-func parseFilters(attribute string, data string, mapping map[string]string) (QueryMod, error) {
+func ParseFilters(attribute string, data string, mapping map[string]string) (QueryMod, error) {
 	if _, ok := mapping[attribute]; !ok {
 		return nil, errors.Errorf("Attribute %s not found", attribute)
 	}
