@@ -94,3 +94,14 @@ func ExistID(db *sql.DB, id string, table string) (bool, error) {
 
 	return row.Next(), nil
 }
+
+func AddPagination(offset *int, limit *int) (res []QueryMod, err error) {
+	res = []QueryMod{}
+	if (limit != nil && offset == nil) || (limit == nil && offset != nil) {
+		return nil, errors.New("Invalid pagination parameters")
+	}
+	if limit != nil && offset != nil {
+		res = append(res, Limit(*limit), Offset(*offset))
+	}
+	return res, nil
+}
