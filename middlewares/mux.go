@@ -80,6 +80,15 @@ func (m *Mux) Handle(method, pattern string, handler http.HandlerFunc) {
 }
 
 // Vars extracts the path variables from the request context.
+func (m *Mux) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	// IIS randomly unescapes some characters, try to recover the original URL
+	if r.Header.Get("X-Unencoded-Url") != "" {
+		r.RequestURI = r.Header.Get("X-Unencoded-Url")
+	}
+	m.ContextMux.ServeHTTP(rw, r)
+}
+
+// Vars extracts the path variables from the request context.
 func (m *Mux) Vars(r *http.Request) map[string]string {
 	return httptreemux.ContextParams(r.Context())
 }
