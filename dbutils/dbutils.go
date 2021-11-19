@@ -2,7 +2,6 @@ package dbutils
 
 import (
 	"database/sql"
-	"strconv"
 	"strings"
 
 	"github.com/juju/errors"
@@ -48,44 +47,24 @@ func ParseFilters(attribute string, data string, mapping map[string]string) (Que
 	if _, ok := filterMap[d[0]]; !ok {
 		return nil, errors.Errorf("Operation %s not valid", d[0])
 	}
-
 	if d[0] == "isNull" || d[0] == "isNotNull" {
 		return Where(mapping[attribute] + filterMap[d[0]]), nil
 	}
-
 	if len(d) < 2 {
 		return nil, errors.Errorf("Invalid format data: %s", data)
 	}
-
 	if d[0] == "in" || d[0] == "notIn" {
 		var value []interface{}
 		stringValue := strings.Split(d[1], ",")
-		isNumber := false
 		for _, v := range stringValue {
-			parsedFloat, err := strconv.ParseFloat(v, 64)
-			if err != nil {
-				if isNumber {
-					return nil, errors.Errorf(d[0] + " clause can't contain mixed data type")
-				}
-				value = append(value, v)
-			} else {
-				value = append(value, parsedFloat)
-			}
+			value = append(value, v)
 		}
 		if d[0] == "in" {
 			return WhereIn(mapping[attribute]+filterMap[d[0]], value...), nil
 		}
 		return WhereNotIn(mapping[attribute]+filterMap[d[0]], value...), nil
 	}
-	var value interface{}
-	parsedFloat, err := strconv.ParseFloat(d[1], 64)
-	if err != nil {
-		value = d[1]
-	} else {
-		value = parsedFloat
-	}
-
-	return Where(mapping[attribute]+filterMap[d[0]], value), nil
+	return Where(mapping[attribute]+filterMap[d[0]], d[1]), nil
 }
 
 // CountElem return the total number of elements
