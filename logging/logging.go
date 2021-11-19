@@ -12,20 +12,27 @@ import (
 	log "github.com/inconshreveable/log15"
 )
 
-// LogsData contains the logs static data
-type LogsData struct {
-	Path   string `yaml:"path"`
-	Expire string `yaml:"expire"`
+// LogConfig contains the log confgiuration
+type LogConfig struct {
+	Path             string `yaml:"path"`
+	ExpirationInDays int    `yaml:"expiration_in_days"`
 }
 
-func InitFileLogger(logger log.Logger, logs LogsData) error {
+func InitFileLogger(logger log.Logger, config LogConfig) error {
+	if config.Path == "" {
+		config.Path = "log"
+	}
+	if config.ExpirationInDays == 0 {
+		config.ExpirationInDays = 7
+	}
+
 	format := "2006-01-02 15-04-05.json"
-	err := os.MkdirAll(logs.Path, os.ModePerm)
+	err := os.MkdirAll(config.Path, os.ModePerm)
 	if err != nil {
 		return err
 	}
 	// set default logger
-	logHandler, err := log.FileHandler(logs.Path+(time.Now().Format(format)), log.JsonFormat())
+	logHandler, err := log.FileHandler(filepath.Join(config.Path, time.Now().Format(format)), log.JsonFormat())
 	if err != nil {
 		return err
 	}
@@ -36,17 +43,13 @@ func InitFileLogger(logger log.Logger, logs LogsData) error {
 		))
 
 	// delete old log files
-	logFiles, err := filepath.Glob(logs.Path + "*.json")
+	logFiles, err := filepath.Glob(filepath.Join(config.Path, "*.json"))
 	if err != nil {
 		return err
 	}
-	expireTime, err := expireDate(time.Now(), logs.Expire)
-	if err != nil {
-		log.Error(err.Error())
-	}
 	for _, file := range logFiles {
-		date, _ := time.Parse(logs.Path+format, file)
-		if date.Before(*expireTime) {
+		date, _ := time.Parse(filepath.Join(config.Path, format), file)
+		if int(time.Since(date).Hours()/24) > config.ExpirationInDays {
 			log.Debug("Deleting old log file:"+file, "age", time.Since(date))
 			err := os.Remove(file)
 			if err != nil {
@@ -54,6 +57,7 @@ func InitFileLogger(logger log.Logger, logs LogsData) error {
 			}
 		}
 	}
+
 	return nil
 }
 
