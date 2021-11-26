@@ -116,29 +116,29 @@ unit:
 }
 
 // FromDuration returns a frequency from time.Duration, rounding to the nearest unit
-func FromDuration(d time.Duration) (Frequency, error) {
+func FromDuration(d time.Duration) Frequency {
 	if d < time.Second {
-		return NilFrequency, ErrInvalidFrequency
+		d = 1 * time.Second
 	}
 	if (d/time.Second)%(3600*24*365) == 0 {
-		return Frequency{years: int((d / time.Second) / (3600 * 24 * 365)), unit: "y"}, nil
+		return Frequency{years: int((d / time.Second) / (3600 * 24 * 365)), unit: "y"}
 	}
 	if (d/time.Second)%(3600*24*30) == 0 {
-		return Frequency{months: int((d / time.Second) / (3600 * 24 * 30)), unit: "m"}, nil
+		return Frequency{months: int((d / time.Second) / (3600 * 24 * 30)), unit: "m"}
 	}
 	if (d/time.Second)%(3600*24*7) == 0 {
-		return Frequency{weeks: int((d / time.Second) / (3600 * 24 * 7)), unit: "w"}, nil
+		return Frequency{weeks: int((d / time.Second) / (3600 * 24 * 7)), unit: "w"}
 	}
 	if (d/time.Second)%(3600*24) == 0 {
-		return Frequency{days: int((d / time.Second) / (3600 * 24)), unit: "d"}, nil
+		return Frequency{days: int((d / time.Second) / (3600 * 24)), unit: "d"}
 	}
 	if (d/time.Second)%3600 == 0 {
-		return Frequency{duration: d.Truncate(time.Hour), unit: "h"}, nil
+		return Frequency{duration: d.Truncate(time.Hour), unit: "h"}
 	}
 	if (d/time.Second)%60 == 0 {
-		return Frequency{duration: d.Truncate(time.Minute), unit: "m"}, nil
+		return Frequency{duration: d.Truncate(time.Minute), unit: "m"}
 	}
-	return Frequency{duration: d.Truncate(time.Second), unit: "s"}, nil
+	return Frequency{duration: d.Truncate(time.Second), unit: "s"}
 }
 
 // Unit returns the time unit

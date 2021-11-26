@@ -139,9 +139,8 @@ func TestNextRun(t *testing.T) {
 
 func TestFromDuration(t *testing.T) {
 	var tests = []struct {
-		d       time.Duration
-		want    Frequency
-		wantErr bool
+		d    time.Duration
+		want Frequency
 	}{
 		{d: 100 * time.Second, want: Frequency{duration: 100 * time.Second, unit: "s"}},
 		{d: 2 * time.Minute, want: Frequency{duration: 2 * time.Minute, unit: "m"}},
@@ -150,15 +149,11 @@ func TestFromDuration(t *testing.T) {
 		{d: 25 * time.Hour, want: Frequency{duration: 25 * time.Hour, unit: "h"}},
 		{d: 24 * time.Hour * 7, want: Frequency{weeks: 1, unit: "w"}},
 		{d: 24 * time.Hour * 8, want: Frequency{days: 8, unit: "d"}},
-		{d: 25 * time.Millisecond, wantErr: true},
+		{d: 25 * time.Millisecond, want: Frequency{duration: 1 * time.Second, unit: "s"}},
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("%d: parse %s", i, tt.d), func(t *testing.T) {
-			got, err := FromDuration(tt.d)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := FromDuration(tt.d)
 
 			if got != tt.want {
 				t.Errorf("Parse() = %v, want %v", got, tt.want)

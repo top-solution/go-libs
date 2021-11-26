@@ -54,6 +54,7 @@ func InitFileLogger(logger log.Logger, config LogConfig) error {
 		}
 		for _, file := range logFiles {
 			date, _ := time.Parse(filepath.Join(config.Path, format), file)
+
 			if config.Expiration.Frequency.ShouldRun(date, time.Now()) {
 				log.Debug("Deleting old log file:"+file, "age", time.Since(date))
 				err := os.Remove(file)
@@ -63,12 +64,14 @@ func InitFileLogger(logger log.Logger, config LogConfig) error {
 			}
 		}
 	}
+	cleanupFn()
 
-	// Init was called twice: weird, but we can handle it
+	// InitFileLogger was called twice: weird, but we can handle it
 	if cleanupLogsTask != nil {
 		cleanupLogsTask.TaskFn = cleanupFn
 	}
-	cleanupLogsTask = frequency.DefaultScheduler.Every(config.Expiration.Frequency).Do(cleanupFn)
+	// Check and delete old logs hourly
+	cleanupLogsTask = frequency.DefaultScheduler.Every(frequency.FromDuration(1 * time.Hour)).Do(cleanupFn)
 
 	return nil
 }
