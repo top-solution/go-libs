@@ -34,8 +34,9 @@ func newEntry(Frequency Frequency) *Entry {
 }
 
 // Do adds a TaskFn to the Entry
-func (e *Entry) Do(taskFn TaskFn) {
+func (e *Entry) Do(taskFn TaskFn) *Entry {
 	e.TaskFn = taskFn
+	return e
 }
 
 // WithLastRun adds LastRunFn to the Entry

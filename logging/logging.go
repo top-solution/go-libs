@@ -11,6 +11,8 @@ import (
 	"gitlab.com/top-solution/go-libs/frequency"
 )
 
+var cleanupLogsTask *frequency.Entry
+
 // LogConfig contains the log confgiuration
 type LogConfig struct {
 	Path       string `yaml:"path"`
@@ -43,21 +45,30 @@ func InitFileLogger(logger log.Logger, config LogConfig) error {
 			log.StreamHandler(os.Stdout, log.TerminalFormat()), // add a readable one for the terminal
 		))
 
-	// delete old log files
-	logFiles, err := filepath.Glob(filepath.Join(config.Path, "*.json"))
-	if err != nil {
-		return err
-	}
-	for _, file := range logFiles {
-		date, _ := time.Parse(filepath.Join(config.Path, format), file)
-		if config.Expiration.Frequency.ShouldRun(date, time.Now()) {
-			log.Debug("Deleting old log file:"+file, "age", time.Since(date))
-			err := os.Remove(file)
-			if err != nil {
-				log.Error(err.Error())
+	// cleanup old logs
+	cleanupFn := func() {
+		logFiles, err := filepath.Glob(filepath.Join(config.Path, "*.json"))
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		for _, file := range logFiles {
+			date, _ := time.Parse(filepath.Join(config.Path, format), file)
+			if config.Expiration.Frequency.ShouldRun(date, time.Now()) {
+				log.Debug("Deleting old log file:"+file, "age", time.Since(date))
+				err := os.Remove(file)
+				if err != nil {
+					log.Error(err.Error())
+				}
 			}
 		}
 	}
+
+	// Init was called twice: weird, but we can handle it
+	if cleanupLogsTask != nil {
+		cleanupLogsTask.TaskFn = cleanupFn
+	}
+	cleanupLogsTask = frequency.DefaultScheduler.Every(config.Expiration.Frequency).Do(cleanupFn)
 
 	return nil
 }
