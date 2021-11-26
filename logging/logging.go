@@ -5,25 +5,26 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/inconshreveable/log15"
+	"gitlab.com/top-solution/go-libs/frequency"
 )
 
 // LogConfig contains the log confgiuration
 type LogConfig struct {
-	Path             string `yaml:"path"`
-	ExpirationInDays int    `yaml:"expiration_in_days"`
+	Path       string `yaml:"path"`
+	Expiration struct {
+		Frequency frequency.Frequency `yaml:"frequency"`
+	} `yaml:"expiration"`
 }
 
 func InitFileLogger(logger log.Logger, config LogConfig) error {
 	if config.Path == "" {
 		config.Path = "log"
 	}
-	if config.ExpirationInDays == 0 {
-		config.ExpirationInDays = 7
+	if config.Expiration.Frequency.IsZero() {
+		config.Expiration.Frequency, _ = frequency.ParseFrequency("1w")
 	}
 
 	format := "2006-01-02 15-04-05.json"
@@ -49,7 +50,7 @@ func InitFileLogger(logger log.Logger, config LogConfig) error {
 	}
 	for _, file := range logFiles {
 		date, _ := time.Parse(filepath.Join(config.Path, format), file)
-		if int(time.Since(date).Hours()/24) > config.ExpirationInDays {
+		if config.Expiration.Frequency.ShouldRun(date, time.Now()) {
 			log.Debug("Deleting old log file:"+file, "age", time.Since(date))
 			err := os.Remove(file)
 			if err != nil {
@@ -59,25 +60,6 @@ func InitFileLogger(logger log.Logger, config LogConfig) error {
 	}
 
 	return nil
-}
-
-func expireDate(expireTime time.Time, expire string) (*time.Time, error) {
-	splitted := strings.Split(expire, " ")
-	data := []int{}
-	for _, elem := range splitted {
-		intTmp, err := strconv.Atoi(elem)
-		if err != nil {
-			return nil, err
-		}
-		data = append(data, intTmp)
-	}
-
-	expireTime.AddDate(data[3], data[4], data[5])
-	expireTime.Add(time.Second * time.Duration(data[0]))
-	expireTime.Add(time.Minute * time.Duration(data[1]))
-	expireTime.Add(time.Hour * time.Duration(data[2]))
-
-	return &expireTime, nil
 }
 
 type GoaServer interface {

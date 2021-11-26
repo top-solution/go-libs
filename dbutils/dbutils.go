@@ -2,12 +2,18 @@ package dbutils
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
+	"log"
+	"runtime/debug"
 	"strings"
 
-	"github.com/juju/errors"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+// ParseSorting generates a raw SORT clause starting from a given list of user-inputted values and an attribute->column map
+// The user values should look like "field" (ASC) or "-field" (DESC)
 func ParseSorting(data []string, mapping map[string]string) ([]string, error) {
 	sortList := []string{}
 	for _, elem := range data {
@@ -17,7 +23,7 @@ func ParseSorting(data []string, mapping map[string]string) ([]string, error) {
 			elem = elem[1:]
 		}
 		if _, ok := mapping[elem]; !ok {
-			return nil, errors.Errorf("Attribute %s not found", elem)
+			return nil, fmt.Errorf("Attribute %s not found", elem)
 		}
 		sortList = append(sortList, mapping[elem]+direction)
 	}
@@ -39,19 +45,20 @@ var filterMap = map[string]string{
 	"notIn":     " NOT IN ?",
 }
 
+// ParseFilters generates an sqlboiler's QueryMod starting from an user-inputted attribute, user-inputted data, and an attribute->column map
 func ParseFilters(attribute string, data string, mapping map[string]string) (QueryMod, error) {
 	if _, ok := mapping[attribute]; !ok {
-		return nil, errors.Errorf("Attribute %s not found", attribute)
+		return nil, fmt.Errorf("Attribute %s not found", attribute)
 	}
 	d := strings.SplitN(data, ":", 2)
 	if _, ok := filterMap[d[0]]; !ok {
-		return nil, errors.Errorf("Operation %s not valid", d[0])
+		return nil, fmt.Errorf("Operation %s not valid", d[0])
 	}
 	if d[0] == "isNull" || d[0] == "isNotNull" {
 		return Where(mapping[attribute] + filterMap[d[0]]), nil
 	}
 	if len(d) < 2 {
-		return nil, errors.Errorf("Invalid format data: %s", data)
+		return nil, fmt.Errorf("Invalid format data: %s", data)
 	}
 	if d[0] == "in" || d[0] == "notIn" {
 		var value []interface{}
@@ -67,35 +74,8 @@ func ParseFilters(attribute string, data string, mapping map[string]string) (Que
 	return Where(mapping[attribute]+filterMap[d[0]], d[1]), nil
 }
 
-// CountElem return the total number of elements
-func CountElem(db *sql.DB, table string, where *string) (int, error) {
-	if where == nil {
-		tmp := ""
-		where = &tmp
-	}
-	var number int
-	err := db.QueryRow("SELECT COUNT(*) FROM " + table + " " + *where).Scan(&number)
-	if err != nil {
-		return -1, errors.Annotatef(err, table+" does not exists")
-	}
-
-	return number, nil
-}
-
-// ExistID check if the  id exists or not into the specified table
-func ExistID(db *sql.DB, id string, table string) (bool, error) {
-	row, err := db.Query("SELECT * FROM " + table + " WHERE [id] = " + id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return false, nil
-		}
-		return false, errors.Annotatef(err, table+" does not exists")
-	}
-
-	return row.Next(), nil
-}
-
-func AddPagination(offset *int, limit *int) (res []QueryMod, err error) {
+// ParsePagination generates a Limit+Offset QueryMod slice given an user-inputted offset and limit
+func ParsePagination(offset *int, limit *int) (res []QueryMod, err error) {
 	res = []QueryMod{}
 	if (limit != nil && offset == nil) || (limit == nil && offset != nil) {
 		return nil, errors.New("Invalid pagination parameters")
@@ -104,4 +84,36 @@ func AddPagination(offset *int, limit *int) (res []QueryMod, err error) {
 		res = append(res, Limit(*limit), Offset(*offset))
 	}
 	return res, nil
+}
+
+// AddPagination is DEPRECATED for name consistency: use ParsePagination instead
+func AddPagination(offset *int, limit *int) (res []QueryMod, err error) {
+	return ParsePagination(offset, limit)
+}
+
+// Transaction wraps a function within an SQL transaction, that can be used to run multiple statements in a safe way
+// In case of errors or panics, the transaction will be rolled back
+func Transaction(db boil.Beginner, txFunc func(*sql.Tx) error) (err error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return
+	}
+	defer func() {
+		//nolint:gocritic
+		if p := recover(); p != nil {
+			err = tx.Rollback()
+			if err != nil {
+				panic(p)
+			}
+			log.Printf("%s: %s", p, debug.Stack())
+			err = errors.New("transaction failed")
+		} else if err != nil {
+			rollbackErr := tx.Rollback() // err is non-nil; don't change it
+			log.Println(rollbackErr)
+		} else {
+			err = tx.Commit() // err is nil; if Commit returns an error, update err
+		}
+	}()
+	err = txFunc(tx)
+	return err
 }
