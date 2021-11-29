@@ -117,3 +117,55 @@ func Transaction(db boil.Beginner, txFunc func(*sql.Tx) error) (err error) {
 	err = txFunc(tx)
 	return err
 }
+
+// DBConfig is a default config struct used to connect to a database
+type DBConfig struct {
+	// Driver contains the driver name
+	Driver string `yaml:"driver"`
+	// Type contains the DB type: it's a MSSQL thing
+	Type string `yaml:"type"`
+	// Server contains the db host address
+	Server string `yaml:"server"`
+	// Port contains the db port
+	Port int `yaml:"port"`
+	// User contaisn the user to access the db
+	User string `yaml:"user"`
+	// Password contains the password to access the db
+	Password string `yaml:"password"`
+	// DB contains the DB name
+	DB string `yaml:"db"`
+	// MigrationsPath contains the path for the migration sql files
+	MigrationsPath string `yaml:"migrations_path"`
+}
+
+// DB is a wrapper for sql.DB, reserved for future migration utilities
+// It can be used as a regular *sql.DB
+type DB struct {
+	*sql.DB
+}
+
+// Open opens a database connection given a config struct
+func Open(conf *DBConfig) (*DB, error) {
+	connectionString := ""
+
+	switch conf.Driver {
+	case "mssql", "":
+		if conf.User == "" {
+			connectionString = fmt.Sprintf("server=%s;port=%d;database=%s",
+				conf.Server, conf.Port, conf.DB)
+		} else {
+			connectionString = fmt.Sprintf("%s://%s:%s@%s:%d?database=%s",
+				conf.Type, conf.User, conf.Password, conf.Server, conf.Port, conf.DB)
+		}
+	case "postgres":
+		connectionString = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+			conf.Server, conf.Port, conf.User, conf.Password, conf.DB)
+	}
+
+	db, err := sql.Open(conf.Driver, connectionString)
+	if err != nil {
+		return nil, (err)
+	}
+
+	return &DB{DB: db}, nil
+}
