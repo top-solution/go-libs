@@ -4,15 +4,46 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"strings"
 
 	"github.com/ardanlabs/conf/v2"
 	confYaml "github.com/ardanlabs/conf/v2/yaml"
 	"gitlab.com/top-solution/go-libs/frequency"
+	"gitlab.com/top-solution/go-libs/version"
 )
 
-// ParseConfig parses a file config, given the file path
-func ParseConfig(cfg interface{}, path string) error {
-	return ParseConfigWithPrefix(cfg, path, "")
+var baseFlags = struct {
+	// The config file path: it's only read from flags or env vars
+	ConfigFile string `yaml:"-" conf:"default:conf.yml"`
+	// The build info of the app
+	Build string `yaml:"-"`
+	// The
+	Desc string `yaml:"-"`
+}{}
+
+// ParseConfig parses a file config, fetching the (optional) config file name from a flag or env var
+func ParseConfig(cfg interface{}) error {
+	// Build version info
+	versionInfo := version.GetInfo()
+	baseFlags.Desc = fmt.Sprintf("%s - %s", versionInfo.Commit, versionInfo.BuildDate)
+	baseFlags.Build = versionInfo.Version
+
+	// Parse base flags
+	help, err := conf.Parse("", &baseFlags)
+	if err != nil {
+		if errors.Is(err, conf.ErrHelpWanted) {
+			if !strings.HasPrefix(help, "Version:") {
+				help, _ = conf.UsageInfo("", cfg)
+			}
+			fmt.Println(help)
+			os.Exit(0)
+			return nil
+		}
+		return fmt.Errorf("parsing config: %w", err)
+	}
+	// Parse config file
+	return ParseConfigWithPrefix(cfg, baseFlags.ConfigFile, "")
 }
 
 // ParseConfig parses a file config, given the file path, expecting the prefix
@@ -26,6 +57,7 @@ func ParseConfigWithPrefix(cfg interface{}, path string, prefix string) error {
 	if err != nil {
 		if errors.Is(err, conf.ErrHelpWanted) {
 			fmt.Println(help)
+			os.Exit(0)
 			return nil
 		}
 		return fmt.Errorf("parsing config: %w", err)
