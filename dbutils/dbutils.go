@@ -12,13 +12,18 @@ import (
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-// ParseSorting generates an OrderBy QueryMod slice starting from a given list of user-inputted values and an attribute->column map
+// ErrEmptySort is raised when ParseSorting is called with an empty slice
+// You should either handle it or use AddSorting instead
+var ErrEmptySort = errors.New("at least a sort parameter is required")
+
+// ParseSorting generates an OrderBy QueryMod starting from a given list of user-inputted values and an attribute->column map
 // The user values should look like "field" (ASC) or "-field" (DESC)
-//
-// An empty slice is returned when no filters are applied, so it's convenient to always append to the current query
-func ParseSorting(data []string, mapping map[string]string) ([]QueryMod, error) {
+func ParseSorting(sort []string, mapping map[string]string) (QueryMod, error) {
+	if len(sort) == 0 {
+		return nil, nil
+	}
 	sortList := []string{}
-	for _, elem := range data {
+	for _, elem := range sort {
 		direction := " ASC"
 		if strings.HasPrefix(elem, "-") {
 			direction = " DESC"
@@ -29,10 +34,21 @@ func ParseSorting(data []string, mapping map[string]string) ([]QueryMod, error) 
 		}
 		sortList = append(sortList, mapping[elem]+direction)
 	}
-	if len(sortList) == 0 {
-		return nil, nil
+	return OrderBy(strings.Join(sortList, ", ")), nil
+}
+
+// AddSorting adds the result of ParseSorting to a given query
+func AddSorting(query *[]QueryMod, sort []string, mapping map[string]string) (err error) {
+	mod, err := ParseSorting(sort, mapping)
+	if err != nil {
+		// If no sort parameters are passed, simply return the query as-is
+		if errors.Is(err, ErrEmptySort) {
+			return nil
+		}
+		return err
 	}
-	return []QueryMod{OrderBy(strings.Join(sortList, ", "))}, nil
+	*query = append(*query, mod)
+	return nil
 }
 
 var filterMap = map[string]string{
@@ -79,6 +95,16 @@ func ParseFilters(attribute string, data string, mapping map[string]string) (Que
 	return Where(mapping[attribute]+filterMap[d[0]], d[1]), nil
 }
 
+// AddPagination adds the parsed filters to the query
+func AddFilters(query *[]QueryMod, attribute string, data string, mapping map[string]string) (err error) {
+	mod, err := ParseFilters(attribute, data, mapping)
+	if err != nil {
+		return err
+	}
+	*query = append(*query, mod)
+	return nil
+}
+
 // ParsePagination generates a Limit+Offset QueryMod slice given an user-inputted offset and limit
 func ParsePagination(offset *int, limit *int) (res []QueryMod, err error) {
 	res = []QueryMod{}
@@ -91,9 +117,14 @@ func ParsePagination(offset *int, limit *int) (res []QueryMod, err error) {
 	return res, nil
 }
 
-// AddPagination is DEPRECATED for name consistency: use ParsePagination instead
-func AddPagination(offset *int, limit *int) (res []QueryMod, err error) {
-	return ParsePagination(offset, limit)
+// AddPagination adds the parsed pagination filters to the query
+func AddPagination(query *[]QueryMod, offset *int, limit *int) (err error) {
+	mods, err := ParsePagination(offset, limit)
+	if err != nil {
+		return err
+	}
+	*query = append(*query, mods...)
+	return nil
 }
 
 // Transaction wraps a function within an SQL transaction, that can be used to run multiple statements in a safe way
