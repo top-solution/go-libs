@@ -41,8 +41,8 @@ func (f FilterMap) ParseSorting(sort []string) (QueryMod, error) {
 }
 
 // AddSorting adds the result of ParseSorting to a given query
-func AddSorting(query *[]QueryMod, sort []string, mapping FilterMap) (err error) {
-	mod, err := mapping.ParseSorting(sort)
+func (f FilterMap) AddSorting(query *[]QueryMod, sort []string) (err error) {
+	mod, err := f.ParseSorting(sort)
 	if err != nil {
 		// If no sort parameters are passed, simply return the query as-is
 		if errors.Is(err, ErrEmptySort) {
@@ -101,8 +101,8 @@ func (f FilterMap) ParseFilters(attribute string, data string) (QueryMod, error)
 }
 
 // AddPagination adds the parsed filters to the query
-func AddFilters(query *[]QueryMod, attribute string, data string, mapping FilterMap) (err error) {
-	mod, err := mapping.ParseFilters(attribute, data)
+func (f FilterMap) AddFilters(query *[]QueryMod, attribute string, data string) (err error) {
+	mod, err := f.ParseFilters(attribute, data)
 	if err != nil {
 		return err
 	}
