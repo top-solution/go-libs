@@ -16,9 +16,12 @@ import (
 // You should either handle it or use AddSorting instead
 var ErrEmptySort = errors.New("at least a sort parameter is required")
 
+// FilterMap maps the "public" name of an attribute with a DB column
+type FilterMap map[string]string
+
 // ParseSorting generates an OrderBy QueryMod starting from a given list of user-inputted values and an attribute->column map
 // The user values should look like "field" (ASC) or "-field" (DESC)
-func ParseSorting(sort []string, mapping map[string]string) (QueryMod, error) {
+func (f FilterMap) ParseSorting(sort []string) (QueryMod, error) {
 	if len(sort) == 0 {
 		return nil, nil
 	}
@@ -29,17 +32,17 @@ func ParseSorting(sort []string, mapping map[string]string) (QueryMod, error) {
 			direction = " DESC"
 			elem = elem[1:]
 		}
-		if _, ok := mapping[elem]; !ok {
+		if _, ok := f[elem]; !ok {
 			return nil, fmt.Errorf("Attribute %s not found", elem)
 		}
-		sortList = append(sortList, mapping[elem]+direction)
+		sortList = append(sortList, f[elem]+direction)
 	}
 	return OrderBy(strings.Join(sortList, ", ")), nil
 }
 
 // AddSorting adds the result of ParseSorting to a given query
-func AddSorting(query *[]QueryMod, sort []string, mapping map[string]string) (err error) {
-	mod, err := ParseSorting(sort, mapping)
+func AddSorting(query *[]QueryMod, sort []string, mapping FilterMap) (err error) {
+	mod, err := mapping.ParseSorting(sort)
 	if err != nil {
 		// If no sort parameters are passed, simply return the query as-is
 		if errors.Is(err, ErrEmptySort) {
@@ -51,7 +54,8 @@ func AddSorting(query *[]QueryMod, sort []string, mapping map[string]string) (er
 	return nil
 }
 
-var filterMap = map[string]string{
+// WhereFilters map user-given operators to Where operators
+var WhereFilters = map[string]string{
 	"eq":        " = ?",
 	"neq":       " != ?",
 	"like":      " LIKE ? ESCAPE '_'",
@@ -67,16 +71,17 @@ var filterMap = map[string]string{
 }
 
 // ParseFilters generates an sqlboiler's QueryMod starting from an user-inputted attribute, user-inputted data, and an attribute->column map
-func ParseFilters(attribute string, data string, mapping map[string]string) (QueryMod, error) {
-	if _, ok := mapping[attribute]; !ok {
+// The
+func (f FilterMap) ParseFilters(attribute string, data string) (QueryMod, error) {
+	if _, ok := f[attribute]; !ok {
 		return nil, fmt.Errorf("Attribute %s not found", attribute)
 	}
 	d := strings.SplitN(data, ":", 2)
-	if _, ok := filterMap[d[0]]; !ok {
+	if _, ok := WhereFilters[d[0]]; !ok {
 		return nil, fmt.Errorf("Operation %s not valid", d[0])
 	}
 	if d[0] == "isNull" || d[0] == "isNotNull" {
-		return Where(mapping[attribute] + filterMap[d[0]]), nil
+		return Where(f[attribute] + WhereFilters[d[0]]), nil
 	}
 	if len(d) < 2 {
 		return nil, fmt.Errorf("Invalid format data: %s", data)
@@ -88,16 +93,16 @@ func ParseFilters(attribute string, data string, mapping map[string]string) (Que
 			value = append(value, v)
 		}
 		if d[0] == "in" {
-			return WhereIn(mapping[attribute]+filterMap[d[0]], value...), nil
+			return WhereIn(f[attribute]+WhereFilters[d[0]], value...), nil
 		}
-		return WhereNotIn(mapping[attribute]+filterMap[d[0]], value...), nil
+		return WhereNotIn(f[attribute]+WhereFilters[d[0]], value...), nil
 	}
-	return Where(mapping[attribute]+filterMap[d[0]], d[1]), nil
+	return Where(f[attribute]+WhereFilters[d[0]], d[1]), nil
 }
 
 // AddPagination adds the parsed filters to the query
-func AddFilters(query *[]QueryMod, attribute string, data string, mapping map[string]string) (err error) {
-	mod, err := ParseFilters(attribute, data, mapping)
+func AddFilters(query *[]QueryMod, attribute string, data string, mapping FilterMap) (err error) {
+	mod, err := mapping.ParseFilters(attribute, data)
 	if err != nil {
 		return err
 	}
