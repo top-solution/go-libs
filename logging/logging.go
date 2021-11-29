@@ -18,8 +18,8 @@ func InitFileLogger(logger log.Logger, config config.LogConfig) error {
 	if config.Path == "" {
 		config.Path = "log"
 	}
-	if config.Expiration.Frequency.IsZero() {
-		config.Expiration.Frequency, _ = frequency.ParseFrequency("1w")
+	if config.Expiration.IsZero() {
+		config.Expiration, _ = frequency.ParseFrequency("1w")
 	}
 
 	format := "2006-01-02 15-04-05.json"
@@ -48,7 +48,7 @@ func InitFileLogger(logger log.Logger, config config.LogConfig) error {
 		for _, file := range logFiles {
 			date, _ := time.Parse(filepath.Join(config.Path, format), file)
 
-			if config.Expiration.Frequency.ShouldRun(date, time.Now()) {
+			if config.Expiration.ShouldRun(date, time.Now()) {
 				log.Debug("Deleting old log file:"+file, "age", time.Since(date))
 				err := os.Remove(file)
 				if err != nil {

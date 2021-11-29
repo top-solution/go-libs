@@ -101,10 +101,8 @@ type EmailConfig struct {
 
 // LogConfig  is a default config struct  for logs
 type LogConfig struct {
-	Path       string `yaml:"path" conf:"default:logs help:T"`
-	Expiration struct {
-		Frequency frequency.Frequency `yaml:"frequency"`
-	} `yaml:"expiration"`
+	Path       string              `yaml:"path" conf:"default:logs/,help:The directory to use to store logs"`
+	Expiration frequency.Frequency `yaml:"expiration" conf:"default:1w,help:How long should the logs kept"`
 }
 
 // DBConfig is a default config struct used to connect to a database
