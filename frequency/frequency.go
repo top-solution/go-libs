@@ -181,7 +181,7 @@ func (d Frequency) IsZero() bool {
 
 // ShouldRun returns true if, given the time of the last run and the current time, the time is up
 func (d Frequency) ShouldRun(lastRun, currentTime time.Time) bool {
-	return d.NextRun(lastRun).After(currentTime)
+	return currentTime.After(d.NextRun(lastRun))
 }
 
 // NextRun returns the time for the next run, given the time of the last

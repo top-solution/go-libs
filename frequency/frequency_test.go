@@ -137,6 +137,39 @@ func TestNextRun(t *testing.T) {
 	}
 }
 
+func TestShouldRun(t *testing.T) {
+	var tests = []struct {
+		f                 Frequency
+		currentTimeString string
+		lastRunString     string
+		should            bool
+	}{
+		{f: Frequency{duration: 15 * time.Millisecond, unit: "ms"}, lastRunString: "2021-11-26T15:00:05.350", currentTimeString: "2021-11-26T15:00:05.565", should: true},
+		{f: Frequency{duration: 100 * time.Second, unit: "s"}, lastRunString: "2021-11-26T15:00:05.350", currentTimeString: "2021-11-26T15:01:50.350", should: true},
+		{f: Frequency{duration: 2 * time.Minute, unit: "m"}, lastRunString: "2021-11-26T15:00:05.350", currentTimeString: "2021-11-26T15:08:05.350", should: true},
+		{f: Frequency{duration: 2 * time.Hour, unit: "h"}, lastRunString: "2021-11-26T15:00:05.350", currentTimeString: "2021-11-26T19:00:05.350", should: true},
+		{f: Frequency{days: 2, unit: "d"}, lastRunString: "2021-11-26T15:00:05.350", currentTimeString: "2021-11-28T15:00:05.360", should: true},
+		{f: Frequency{days: 2, unit: "d"}, lastRunString: "2021-11-26T15:00:05.350", currentTimeString: "2021-11-28T14:00:05.350", should: false},
+		{f: Frequency{weeks: 3, unit: "w"}, lastRunString: "2021-11-26T15:00:05.350", currentTimeString: "2021-12-17T15:00:05.350", should: false},
+		{f: Frequency{months: 1, unit: "mo"}, lastRunString: "2021-11-26T15:00:05.350", currentTimeString: "2021-12-26T15:00:05.350", should: false},
+		{f: Frequency{years: 4, unit: "y"}, lastRunString: "2021-11-26T15:00:05.350", currentTimeString: "2025-11-26T15:00:05.350", should: false},
+		{f: Frequency{days: 2, unit: "d"}, lastRunString: "2021-11-26T15:00:05.350", currentTimeString: "2021-11-28T15:00:05.350", should: false},
+		{f: Frequency{months: 1, unit: "mo"}, lastRunString: "2021-01-31T15:00:05.350", currentTimeString: "2021-03-03T15:00:05.340", should: false},
+		{f: Frequency{months: 1, unit: "mo"}, lastRunString: "2021-01-31T15:00:05.350", currentTimeString: "2021-03-03T15:00:05.360", should: true},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("%d: %s", i, tt.f), func(t *testing.T) {
+			lastRun, _ := time.Parse(timeLayout, tt.lastRunString)
+			currentTime, _ := time.Parse(timeLayout, tt.currentTimeString)
+			got := tt.f.ShouldRun(lastRun, currentTime)
+			if got != tt.should {
+				t.Errorf("ShouldRun() = %v, want %v", got, tt.should)
+			}
+		})
+	}
+}
+
 func TestFromDuration(t *testing.T) {
 	var tests = []struct {
 		d    time.Duration
