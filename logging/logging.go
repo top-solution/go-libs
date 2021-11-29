@@ -8,20 +8,13 @@ import (
 	"time"
 
 	log "github.com/inconshreveable/log15"
+	"gitlab.com/top-solution/go-libs/config"
 	"gitlab.com/top-solution/go-libs/frequency"
 )
 
 var cleanupLogsTask *frequency.Entry
 
-// LogConfig contains the log confgiuration
-type LogConfig struct {
-	Path       string `yaml:"path"`
-	Expiration struct {
-		Frequency frequency.Frequency `yaml:"frequency"`
-	} `yaml:"expiration"`
-}
-
-func InitFileLogger(logger log.Logger, config LogConfig) error {
+func InitFileLogger(logger log.Logger, config config.LogConfig) error {
 	if config.Path == "" {
 		config.Path = "log"
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"gitlab.com/top-solution/go-libs/config"
 )
 
 // ErrEmptySort is raised when ParseSorting is called with an empty slice
@@ -159,26 +160,6 @@ func Transaction(db boil.Beginner, txFunc func(*sql.Tx) error) (err error) {
 	return err
 }
 
-// DBConfig is a default config struct used to connect to a database
-type DBConfig struct {
-	// Driver contains the driver name
-	Driver string `yaml:"driver"`
-	// Type contains the DB type: it's a MSSQL thing
-	Type string `yaml:"type"`
-	// Server contains the db host address
-	Server string `yaml:"server"`
-	// Port contains the db port
-	Port int `yaml:"port"`
-	// User contaisn the user to access the db
-	User string `yaml:"user"`
-	// Password contains the password to access the db
-	Password string `yaml:"password"`
-	// DB contains the DB name
-	DB string `yaml:"db"`
-	// MigrationsPath contains the path for the migration sql files
-	MigrationsPath string `yaml:"migrations_path"`
-}
-
 // DB is a wrapper for sql.DB, reserved for future migration utilities
 // It can be used as a regular *sql.DB
 type DB struct {
@@ -186,7 +167,7 @@ type DB struct {
 }
 
 // Open opens a database connection given a config struct
-func Open(conf *DBConfig) (*DB, error) {
+func Open(conf *config.DBConfig) (*DB, error) {
 	connectionString := ""
 
 	switch conf.Driver {
