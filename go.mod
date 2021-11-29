@@ -3,6 +3,7 @@ module gitlab.com/top-solution/go-libs
 go 1.16
 
 require (
+	github.com/ardanlabs/conf/v2 v2.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dimfeld/httptreemux/v5 v5.2.2
 	github.com/fatih/color v1.13.0 // indirect
