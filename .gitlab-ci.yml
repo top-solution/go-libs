@@ -16,7 +16,7 @@ stages:
 test:
   stage: test
   script:
-    - go test
+    - go test -v ./...
   extends: .go-step
   rules:
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
