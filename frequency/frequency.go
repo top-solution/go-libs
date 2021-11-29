@@ -189,6 +189,17 @@ func (d Frequency) NextRun(lastRun time.Time) time.Time {
 	return lastRun.Add(d.duration).AddDate(d.years, d.months, d.weeks*7+d.days)
 }
 
+// Set implements the Setter interface for ardanlabs/conf
+func (f *Frequency) Set(data string) error {
+	ff, err := ParseFrequency(data)
+	if err != nil {
+		return err
+	}
+	*f = ff
+
+	return err
+}
+
 // UnmarshalYAML Implements the Unmarshaler interface of the yaml pkg
 func (f *Frequency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var buf string
@@ -196,25 +207,17 @@ func (f *Frequency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err != nil {
 		return err
 	}
-	ff, err := ParseFrequency(buf)
-	if err != nil {
-		return err
-	}
-
-	*f = ff
-
-	return nil
+	return f.Set(buf)
 }
 
 // UnmarshalJSON Implements the Unmarshaler interface of the json pkg
 func (f *Frequency) UnmarshalJSON(data []byte) error {
-	ff, err := ParseFrequency(string(data))
-	if err != nil {
-		return err
-	}
-	*f = ff
+	return f.Set(string(data))
+}
 
-	return err
+// UnmarshalText Implements the TextUnmarshaler interface of the encoding pkg
+func (f *Frequency) UnmarshalText(data []byte) error {
+	return f.Set(string(data))
 }
 
 // split splits a string into a slice of runes
