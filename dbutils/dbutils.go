@@ -12,9 +12,11 @@ import (
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-// ParseSorting generates a raw SORT clause starting from a given list of user-inputted values and an attribute->column map
+// ParseSorting generates an OrderBy QueryMod slice starting from a given list of user-inputted values and an attribute->column map
 // The user values should look like "field" (ASC) or "-field" (DESC)
-func ParseSorting(data []string, mapping map[string]string) ([]string, error) {
+//
+// An empty slice is returned when no filters are applied, so it's convenient to always append to the current query
+func ParseSorting(data []string, mapping map[string]string) ([]QueryMod, error) {
 	sortList := []string{}
 	for _, elem := range data {
 		direction := " ASC"
@@ -27,7 +29,10 @@ func ParseSorting(data []string, mapping map[string]string) ([]string, error) {
 		}
 		sortList = append(sortList, mapping[elem]+direction)
 	}
-	return sortList, nil
+	if len(sortList) == 0 {
+		return nil, nil
+	}
+	return []QueryMod{OrderBy(strings.Join(sortList, ", "))}, nil
 }
 
 var filterMap = map[string]string{
