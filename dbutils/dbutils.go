@@ -209,7 +209,10 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 	}
 
 	goose.SetBaseFS(fsys)
-	goose.SetDialect(conf.Driver)
+	err = goose.SetDialect(conf.Driver)
+	if err != nil {
+		return nil, -1, err
+	}
 
 	currentVersion, err := res.Version()
 	if err != nil {
