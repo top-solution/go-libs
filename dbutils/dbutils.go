@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"runtime/debug"
 	"strings"
 
+	"github.com/pressly/goose/v3"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"gitlab.com/top-solution/go-libs/config"
@@ -160,18 +162,22 @@ func Transaction(db boil.Beginner, txFunc func(*sql.Tx) error) (err error) {
 	return err
 }
 
-// DB is a wrapper for sql.DB, reserved for future migration utilities
-// It can be used as a regular *sql.DB
+// DB is a wrapper for *sql.DB, providing a few utilities to handle migrations
 type DB struct {
 	*sql.DB
+	conf config.DBConfig
+	fsys fs.FS
 }
 
 // Open opens a database connection given a config struct
-func Open(conf *config.DBConfig) (*DB, error) {
+// It expects a fs.FS in order to fetch and run the DB migrations
+// If you don't need them, just pass nil instead
+func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 	connectionString := ""
 
 	switch conf.Driver {
 	case "mssql", "":
+		conf.Driver = "mssql"
 		if conf.User == "" {
 			connectionString = fmt.Sprintf("server=%s;port=%d;database=%s",
 				conf.Server, conf.Port, conf.DB)
@@ -186,8 +192,55 @@ func Open(conf *config.DBConfig) (*DB, error) {
 
 	db, err := sql.Open(conf.Driver, connectionString)
 	if err != nil {
-		return nil, (err)
+		return nil, -1, err
 	}
 
-	return &DB{DB: db}, nil
+	// Make sure the DB is actually reachable
+	err = db.Ping()
+	if err != nil {
+		return nil, -1, fmt.Errorf("pinging DB server: %w", err)
+	}
+
+	res := &DB{DB: db, conf: conf, fsys: fsys}
+
+	// If fsys is not set, skip migrations
+	if fsys == nil {
+		return res, -1, nil
+	}
+
+	goose.SetBaseFS(fsys)
+	goose.SetDialect(conf.Driver)
+
+	currentVersion, err := res.Version()
+	if err != nil {
+		return nil, -1, err
+	}
+
+	// Don't run migrations if not requested
+	if !conf.Migrations.Run {
+		return res, currentVersion, nil
+	}
+
+	return res, currentVersion, res.Up()
+}
+
+// Up runs the migrations up to the latest version
+func (d *DB) Up() error {
+	if d.fsys == nil {
+		return errors.New("can't run migrations: no file system was passed to Open()")
+	}
+
+	err := goose.Up(d.DB, d.conf.Migrations.Path)
+	if err != nil {
+		return fmt.Errorf("running db migrations: %w", err)
+	}
+	return nil
+}
+
+// Version return the current DB version
+func (d *DB) Version() (int64, error) {
+	if d.fsys == nil {
+		return -1, errors.New("can't get current version: no file system was passed to Open()")
+	}
+	return goose.GetDBVersion(d.DB)
 }

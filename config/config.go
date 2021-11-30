@@ -125,7 +125,9 @@ type DBConfig struct {
 	// Password contains the password to access the db
 	Password string `yaml:"password"`
 	// DB contains the DB name
-	DB string `yaml:"db"`
-	// MigrationsPath contains the path for the migration sql files
-	MigrationsPath string `yaml:"migrations_path" conf:"default:sql"`
+	DB         string `yaml:"db" conf:"help:The name of the DB"`
+	Migrations struct {
+		Run  bool   `yaml:"run" conf:"default:false,help:If true, migrations will be run on app startup"`
+		Path string `yaml:"path" conf:"default:sql,help:The path to the directory containing the Goose-compatible SQL migrations"`
+	} `yaml:"migrations"`
 }
