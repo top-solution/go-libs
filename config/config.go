@@ -53,19 +53,22 @@ func readYamlConf(path string) (c yamlConfParser, err error) {
 func ParseConfigAndVersion(cfg interface{}) error {
 	// Build version info
 	versionInfo := version.GetInfo()
-	baseFlags.Desc = fmt.Sprintf("%s - %s", versionInfo.Commit, versionInfo.BuildDate)
+	baseFlags.Desc = fmt.Sprintf("Commit %s built @ %s", versionInfo.Commit, versionInfo.BuildDate)
 	baseFlags.Build = versionInfo.Version
 
 	// Parse base flags
 	help, err := conf.Parse("", &baseFlags)
 	if err != nil {
 		if errors.Is(err, conf.ErrHelpWanted) {
-			if !strings.HasPrefix(help, "Version:") {
+			helpActuallyWanted := !strings.HasPrefix(help, "Version:")
+			if helpActuallyWanted {
 				help, _ = conf.UsageInfo("", cfg)
 			}
 			fmt.Println(help)
-			fmt.Println("BASE OPTIONS")
-			fmt.Println("  --config-file\t\t <string> set the config file path (default: conf.yml)")
+			if helpActuallyWanted {
+				fmt.Println("BASE OPTIONS")
+				fmt.Println("  --config-file\t\t <string> set the config file path (default: conf.yml)")
+			}
 			os.Exit(0)
 			return nil
 		}
@@ -112,19 +115,19 @@ type LogConfig struct {
 
 // DBConfig is a default config struct used to connect to a database
 type DBConfig struct {
-	// Driver contains the driver name
+	// Driver is the driver name
 	Driver string `yaml:"driver"`
-	// Type contains the DB type: it's a MSSQL thing
+	// Type is the DB type: it's a MSSQL thing
 	Type string `yaml:"type" conf:"default:sqlserver"`
-	// Server contains the db host address
+	// Server is db host address
 	Server string `yaml:"server"`
-	// Port contains the db port
+	// Port is the db port
 	Port int `yaml:"port"`
-	// User contaisn the user to access the db
+	// User is the db user
 	User string `yaml:"user"`
-	// Password contains the password to access the db
+	// Password is the password for the db user
 	Password string `yaml:"password"`
-	// DB contains the DB name
+	// DB is the db name
 	DB         string `yaml:"db" conf:"help:The name of the DB"`
 	Migrations struct {
 		Run  bool   `yaml:"run" conf:"default:false,help:If true, migrations will be run on app startup"`
