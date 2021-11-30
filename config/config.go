@@ -45,6 +45,11 @@ func readYamlConf(path string) (c yamlConfParser, err error) {
 }
 
 // ParseConfig parses a file config, fetching the (optional) config file name from a flag or env var
+// It expects a config file passed via the --config-file flag or CONFIG_FILE env var, defaulting to conf.yml
+// It will also provide a way to set config values via env vars or flags, and add a --version and --help command in the final executable
+//
+// The --help text will be populated by analyzing the struct of the passed cfg
+// The --version text will be populated via gitlab.com/top-solution/go-libs/version
 func ParseConfigAndVersion(cfg interface{}) error {
 	// Build version info
 	versionInfo := version.GetInfo()
