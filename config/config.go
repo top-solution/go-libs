@@ -116,17 +116,17 @@ type LogConfig struct {
 // DBConfig is a default config struct used to connect to a database
 type DBConfig struct {
 	// Driver is the driver name
-	Driver string `yaml:"driver"`
+	Driver string `yaml:"driver" conf:"help:The db driver name"`
 	// Type is the DB type: it's a MSSQL thing
-	Type string `yaml:"type" conf:"default:sqlserver"`
+	Type string `yaml:"type" conf:"default:sqlserver,help:The db type (for mssql)"`
 	// Server is db host address
-	Server string `yaml:"server"`
+	Server string `yaml:"server" conf:"help:The db host"`
 	// Port is the db port
-	Port int `yaml:"port"`
+	Port int `yaml:"port" conf:"help:The db name"`
 	// User is the db user
-	User string `yaml:"user"`
+	User string `yaml:"user" conf:"help:The db user"`
 	// Password is the password for the db user
-	Password string `yaml:"password"`
+	Password string `yaml:"password" conf:"help:The db user password"`
 	// DB is the db name
 	DB         string `yaml:"db" conf:"help:The name of the DB"`
 	Migrations struct {
