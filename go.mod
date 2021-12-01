@@ -2,10 +2,8 @@ module gitlab.com/top-solution/go-libs
 
 go 1.16
 
-replace github.com/ardanlabs/conf/v2 => github.com/Serjlee/conf/v2 v2.1.2-0.20210909201026-eb6909e84093
-
 require (
-	github.com/ardanlabs/conf/v2 v2.1.1
+	github.com/ardanlabs/conf/v2 v2.2.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dimfeld/httptreemux/v5 v5.2.2
 	github.com/fatih/color v1.13.0 // indirect
