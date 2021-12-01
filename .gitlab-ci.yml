@@ -1,5 +1,6 @@
 image: top-solution/golang-cgo-1.16-ci
 stages:
+  - lint
   - test
 
 .go-step:
@@ -12,6 +13,15 @@ stages:
   cache:
     paths:
       - .go/pkg/mod/
+
+lint:
+  stage: lint
+  script:
+    - golangci-lint run
+  extends: .go-step
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
+    - if: $CI_COMMIT_REF_NAME == "master"
 
 test:
   stage: test
