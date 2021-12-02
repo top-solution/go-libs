@@ -5,25 +5,21 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/inconshreveable/log15"
+	"gitlab.com/top-solution/go-libs/config"
+	"gitlab.com/top-solution/go-libs/frequency"
 )
 
-// LogConfig contains the log confgiuration
-type LogConfig struct {
-	Path             string `yaml:"path"`
-	ExpirationInDays int    `yaml:"expiration_in_days"`
-}
+var cleanupLogsTask *frequency.Entry
 
-func InitFileLogger(logger log.Logger, config LogConfig) error {
+func InitFileLogger(logger log.Logger, config config.LogConfig) error {
 	if config.Path == "" {
 		config.Path = "log"
 	}
-	if config.ExpirationInDays == 0 {
-		config.ExpirationInDays = 7
+	if config.Expiration.IsZero() {
+		config.Expiration, _ = frequency.ParseFrequency("1w")
 	}
 
 	format := "2006-01-02 15-04-05.json"
@@ -42,42 +38,35 @@ func InitFileLogger(logger log.Logger, config LogConfig) error {
 			log.StreamHandler(os.Stdout, log.TerminalFormat()), // add a readable one for the terminal
 		))
 
-	// delete old log files
-	logFiles, err := filepath.Glob(filepath.Join(config.Path, "*.json"))
-	if err != nil {
-		return err
-	}
-	for _, file := range logFiles {
-		date, _ := time.Parse(filepath.Join(config.Path, format), file)
-		if int(time.Since(date).Hours()/24) > config.ExpirationInDays {
-			log.Debug("Deleting old log file:"+file, "age", time.Since(date))
-			err := os.Remove(file)
-			if err != nil {
-				log.Error(err.Error())
+	// cleanup old logs
+	cleanupFn := func() {
+		logFiles, err := filepath.Glob(filepath.Join(config.Path, "*.json"))
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		for _, file := range logFiles {
+			date, _ := time.Parse(filepath.Join(config.Path, format), file)
+
+			if config.Expiration.ShouldRun(date, time.Now()) {
+				log.Debug("Deleting old log file:"+file, "age", time.Since(date))
+				err := os.Remove(file)
+				if err != nil {
+					log.Error(err.Error())
+				}
 			}
 		}
 	}
+	cleanupFn()
+
+	// InitFileLogger was called twice: weird, but we can handle it
+	if cleanupLogsTask != nil {
+		cleanupLogsTask.TaskFn = cleanupFn
+	}
+	// Check and delete old logs hourly
+	cleanupLogsTask = frequency.DefaultScheduler.Every(frequency.FromDuration(1 * time.Hour)).Do(cleanupFn)
 
 	return nil
-}
-
-func expireDate(expireTime time.Time, expire string) (*time.Time, error) {
-	splitted := strings.Split(expire, " ")
-	data := []int{}
-	for _, elem := range splitted {
-		intTmp, err := strconv.Atoi(elem)
-		if err != nil {
-			return nil, err
-		}
-		data = append(data, intTmp)
-	}
-
-	expireTime.AddDate(data[3], data[4], data[5])
-	expireTime.Add(time.Second * time.Duration(data[0]))
-	expireTime.Add(time.Minute * time.Duration(data[1]))
-	expireTime.Add(time.Hour * time.Duration(data[2]))
-
-	return &expireTime, nil
 }
 
 type GoaServer interface {

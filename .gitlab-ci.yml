@@ -1,0 +1,32 @@
+image: top-solution/golang-cgo-1.16-ci
+stages:
+  - test
+
+.go-step:
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.go
+    GOPRIVATE: gitlab.com/top-solution/*
+  before_script:
+    - mkdir -p .go
+    - git config --global url."https://${COLLINS_LIBS_DEPLOY_TOKEN}@gitlab.com/".insteadOf "https://gitlab.com/"
+  cache:
+    paths:
+      - .go/pkg/mod/
+
+lint:
+  stage: test
+  script:
+    - golangci-lint run
+  extends: .go-step
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
+    - if: $CI_COMMIT_REF_NAME == "master"
+
+test:
+  stage: test
+  script:
+    - go test -v ./...
+  extends: .go-step
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
+    - if: $CI_COMMIT_REF_NAME == "master"

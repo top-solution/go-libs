@@ -2,7 +2,6 @@ package authorizer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -110,7 +109,7 @@ func NewLadon() *LadonAuthorizer {
 func (l *LadonAuthorizer) IsUserAllowed(ctx context.Context, r *ladon.Request) error {
 	err := l.Ladon.IsAllowed(r)
 	if err != nil {
-		return errors.New(fmt.Sprintf("you have no permission for action %s on %s (%v)", r.Action, r.Resource, r.Context))
+		return fmt.Errorf("you have no permission for action %s on %s (%v)", r.Action, r.Resource, r.Context)
 	}
 	return nil
 }
@@ -119,6 +118,10 @@ func (l *LadonAuthorizer) LoadPoliciesFromJSONS(root string, fsys fs.ReadFileFS)
 	return fs.WalkDir(fsys, root, func(path string, info fs.DirEntry, err error) error {
 		if filepath.Ext(path) != ".json" {
 			return nil
+		}
+
+		if err != nil {
+			return err
 		}
 
 		file, err := fsys.ReadFile(path)

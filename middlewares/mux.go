@@ -69,7 +69,7 @@ func NewMuxer() *Mux {
 		ctx := context.WithValue(req.Context(), goahttp.AcceptTypeKey, req.Header.Get("Accept"))
 		enc := goahttp.ResponseEncoder(ctx, w)
 		w.WriteHeader(http.StatusNotFound)
-		enc.Encode(goahttp.NewErrorResponse(fmt.Errorf("404 page not found")))
+		_ = enc.Encode(goahttp.NewErrorResponse(fmt.Errorf("404 page not found")))
 	}
 	return &Mux{r}
 }

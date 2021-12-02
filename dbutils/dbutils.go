@@ -2,29 +2,63 @@ package dbutils
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
+	"io/fs"
+	"log"
+	"runtime/debug"
 	"strings"
 
-	"github.com/juju/errors"
+	"github.com/pressly/goose/v3"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"gitlab.com/top-solution/go-libs/config"
 )
 
-func ParseSorting(data []string, mapping map[string]string) ([]string, error) {
+// ErrEmptySort is raised when ParseSorting is called with an empty slice
+// You should either handle it or use AddSorting instead
+var ErrEmptySort = errors.New("at least a sort parameter is required")
+
+// FilterMap maps the "public" name of an attribute with a DB column
+type FilterMap map[string]string
+
+// ParseSorting generates an OrderBy QueryMod starting from a given list of user-inputted values and an attribute->column map
+// The user values should look like "field" (ASC) or "-field" (DESC)
+func (f FilterMap) ParseSorting(sort []string) (QueryMod, error) {
+	if len(sort) == 0 {
+		return nil, nil
+	}
 	sortList := []string{}
-	for _, elem := range data {
+	for _, elem := range sort {
 		direction := " ASC"
 		if strings.HasPrefix(elem, "-") {
 			direction = " DESC"
 			elem = elem[1:]
 		}
-		if _, ok := mapping[elem]; !ok {
-			return nil, errors.Errorf("Attribute %s not found", elem)
+		if _, ok := f[elem]; !ok {
+			return nil, fmt.Errorf("Attribute %s not found", elem)
 		}
-		sortList = append(sortList, mapping[elem]+direction)
+		sortList = append(sortList, f[elem]+direction)
 	}
-	return sortList, nil
+	return OrderBy(strings.Join(sortList, ", ")), nil
 }
 
-var filterMap = map[string]string{
+// AddSorting adds the result of ParseSorting to a given query
+func (f FilterMap) AddSorting(query *[]QueryMod, sort []string) (err error) {
+	mod, err := f.ParseSorting(sort)
+	if err != nil {
+		// If no sort parameters are passed, simply return the query as-is
+		if errors.Is(err, ErrEmptySort) {
+			return nil
+		}
+		return err
+	}
+	*query = append(*query, mod)
+	return nil
+}
+
+// WhereFilters map user-given operators to Where operators
+var WhereFilters = map[string]string{
 	"eq":        " = ?",
 	"neq":       " != ?",
 	"like":      " LIKE ? ESCAPE '_'",
@@ -39,19 +73,21 @@ var filterMap = map[string]string{
 	"notIn":     " NOT IN ?",
 }
 
-func ParseFilters(attribute string, data string, mapping map[string]string) (QueryMod, error) {
-	if _, ok := mapping[attribute]; !ok {
-		return nil, errors.Errorf("Attribute %s not found", attribute)
+// ParseFilters generates an sqlboiler's QueryMod starting from an user-inputted attribute, user-inputted data, and an attribute->column map
+// The
+func (f FilterMap) ParseFilters(attribute string, data string) (QueryMod, error) {
+	if _, ok := f[attribute]; !ok {
+		return nil, fmt.Errorf("Attribute %s not found", attribute)
 	}
 	d := strings.SplitN(data, ":", 2)
-	if _, ok := filterMap[d[0]]; !ok {
-		return nil, errors.Errorf("Operation %s not valid", d[0])
+	if _, ok := WhereFilters[d[0]]; !ok {
+		return nil, fmt.Errorf("Operation %s not valid", d[0])
 	}
 	if d[0] == "isNull" || d[0] == "isNotNull" {
-		return Where(mapping[attribute] + filterMap[d[0]]), nil
+		return Where(f[attribute] + WhereFilters[d[0]]), nil
 	}
 	if len(d) < 2 {
-		return nil, errors.Errorf("Invalid format data: %s", data)
+		return nil, fmt.Errorf("Invalid format data: %s", data)
 	}
 	if d[0] == "in" || d[0] == "notIn" {
 		var value []interface{}
@@ -60,42 +96,25 @@ func ParseFilters(attribute string, data string, mapping map[string]string) (Que
 			value = append(value, v)
 		}
 		if d[0] == "in" {
-			return WhereIn(mapping[attribute]+filterMap[d[0]], value...), nil
+			return WhereIn(f[attribute]+WhereFilters[d[0]], value...), nil
 		}
-		return WhereNotIn(mapping[attribute]+filterMap[d[0]], value...), nil
+		return WhereNotIn(f[attribute]+WhereFilters[d[0]], value...), nil
 	}
-	return Where(mapping[attribute]+filterMap[d[0]], d[1]), nil
+	return Where(f[attribute]+WhereFilters[d[0]], d[1]), nil
 }
 
-// CountElem return the total number of elements
-func CountElem(db *sql.DB, table string, where *string) (int, error) {
-	if where == nil {
-		tmp := ""
-		where = &tmp
-	}
-	var number int
-	err := db.QueryRow("SELECT COUNT(*) FROM " + table + " " + *where).Scan(&number)
+// AddPagination adds the parsed filters to the query
+func (f FilterMap) AddFilters(query *[]QueryMod, attribute string, data string) (err error) {
+	mod, err := f.ParseFilters(attribute, data)
 	if err != nil {
-		return -1, errors.Annotatef(err, table+" does not exists")
+		return err
 	}
-
-	return number, nil
+	*query = append(*query, mod)
+	return nil
 }
 
-// ExistID check if the  id exists or not into the specified table
-func ExistID(db *sql.DB, id string, table string) (bool, error) {
-	row, err := db.Query("SELECT * FROM " + table + " WHERE [id] = " + id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return false, nil
-		}
-		return false, errors.Annotatef(err, table+" does not exists")
-	}
-
-	return row.Next(), nil
-}
-
-func AddPagination(offset *int, limit *int) (res []QueryMod, err error) {
+// ParsePagination generates a Limit+Offset QueryMod slice given an user-inputted offset and limit
+func ParsePagination(offset *int, limit *int) (res []QueryMod, err error) {
 	res = []QueryMod{}
 	if (limit != nil && offset == nil) || (limit == nil && offset != nil) {
 		return nil, errors.New("Invalid pagination parameters")
@@ -104,4 +123,127 @@ func AddPagination(offset *int, limit *int) (res []QueryMod, err error) {
 		res = append(res, Limit(*limit), Offset(*offset))
 	}
 	return res, nil
+}
+
+// AddPagination adds the parsed pagination filters to the query
+func AddPagination(query *[]QueryMod, offset *int, limit *int) (err error) {
+	mods, err := ParsePagination(offset, limit)
+	if err != nil {
+		return err
+	}
+	*query = append(*query, mods...)
+	return nil
+}
+
+// Transaction wraps a function within an SQL transaction, that can be used to run multiple statements in a safe way
+// In case of errors or panics, the transaction will be rolled back
+func Transaction(db boil.Beginner, txFunc func(*sql.Tx) error) (err error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return
+	}
+	defer func() {
+		//nolint:gocritic
+		if p := recover(); p != nil {
+			err = tx.Rollback()
+			if err != nil {
+				panic(p)
+			}
+			log.Printf("%s: %s", p, debug.Stack())
+			err = errors.New("transaction failed")
+		} else if err != nil {
+			rollbackErr := tx.Rollback() // err is non-nil; don't change it
+			log.Println(rollbackErr)
+		} else {
+			err = tx.Commit() // err is nil; if Commit returns an error, update err
+		}
+	}()
+	err = txFunc(tx)
+	return err
+}
+
+// DB is a wrapper for *sql.DB, providing a few utilities to handle migrations
+type DB struct {
+	*sql.DB
+	conf config.DBConfig
+	fsys fs.FS
+}
+
+// Open opens a database connection given a config struct
+// It expects a fs.FS in order to fetch and run the DB migrations
+// If you don't need them, just pass nil instead
+func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
+	connectionString := ""
+
+	switch conf.Driver {
+	case "mssql", "":
+		conf.Driver = "mssql"
+		if conf.User == "" {
+			connectionString = fmt.Sprintf("server=%s;port=%d;database=%s",
+				conf.Server, conf.Port, conf.DB)
+		} else {
+			connectionString = fmt.Sprintf("%s://%s:%s@%s:%d?database=%s",
+				conf.Type, conf.User, conf.Password, conf.Server, conf.Port, conf.DB)
+		}
+	case "postgres":
+		connectionString = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+			conf.Server, conf.Port, conf.User, conf.Password, conf.DB)
+	}
+
+	db, err := sql.Open(conf.Driver, connectionString)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	// Make sure the DB is actually reachable
+	err = db.Ping()
+	if err != nil {
+		return nil, -1, fmt.Errorf("pinging DB server: %w", err)
+	}
+
+	res := &DB{DB: db, conf: conf, fsys: fsys}
+
+	// If fsys is not set, skip migrations
+	if fsys == nil {
+		return res, -1, nil
+	}
+
+	goose.SetBaseFS(fsys)
+	err = goose.SetDialect(conf.Driver)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	currentVersion, err := res.Version()
+	if err != nil {
+		return nil, -1, err
+	}
+
+	// Don't run migrations if not requested
+	if !conf.Migrations.Run {
+		return res, currentVersion, nil
+	}
+
+	return res, currentVersion, res.Up()
+}
+
+// Up runs the migrations up to the latest version
+func (d *DB) Up() error {
+	if d.fsys == nil {
+		return errors.New("can't run migrations: no file system was passed to Open()")
+	}
+
+	err := goose.Up(d.DB, d.conf.Migrations.Path)
+	if err != nil {
+		return fmt.Errorf("running db migrations: %w", err)
+	}
+	return nil
+}
+
+// Version return the current DB version
+func (d *DB) Version() (int64, error) {
+	if d.fsys == nil {
+		return -1, errors.New("can't get current version: no file system was passed to Open()")
+	}
+	return goose.GetDBVersion(d.DB)
 }
