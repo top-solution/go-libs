@@ -1,6 +1,5 @@
 image: top-solution/golang-cgo-1.16-ci
 stages:
-  - lint
   - test
 
 .go-step:
@@ -15,7 +14,7 @@ stages:
       - .go/pkg/mod/
 
 lint:
-  stage: lint
+  stage: test
   script:
     - golangci-lint run
   extends: .go-step
