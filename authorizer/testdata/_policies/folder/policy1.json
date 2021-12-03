@@ -1,0 +1,13 @@
+{
+    "id": "policy1",
+    "subjects": [
+        "this"
+    ],
+    "actions": [
+        "pass"
+    ],
+    "resources": [
+        "test"
+    ],
+    "effect": "allow"
+}

@@ -39,7 +39,11 @@ func (c *NotInSetCondition) Fulfills(value interface{}, _ *ladon.Request) bool {
 
 	val, ok := value.([]string)
 	if !ok {
-		return false
+		if singleVal, ok := value.(string); ok {
+			val = []string{singleVal}
+		} else {
+			return false
+		}
 	}
 
 	unwanted := make(map[string]struct{}, len(c.Denied))
@@ -70,12 +74,16 @@ func (c *InSetCondition) GetName() string {
 // The InSetCondition is fulfilled if at least one of the provided strings are matched in a set
 func (c *InSetCondition) Fulfills(value interface{}, _ *ladon.Request) bool {
 	if value == nil {
-		return true
+		return false
 	}
 
 	val, ok := value.([]string)
 	if !ok {
-		return false
+		if singleVal, ok := value.(string); ok {
+			val = []string{singleVal}
+		} else {
+			return false
+		}
 	}
 
 	wanted := make(map[string]struct{}, len(c.Valid))
@@ -114,7 +122,7 @@ func (l *LadonAuthorizer) IsUserAllowed(ctx context.Context, r *ladon.Request) e
 	return nil
 }
 
-func (l *LadonAuthorizer) LoadPoliciesFromJSONS(root string, fsys fs.ReadFileFS) error {
+func (l *LadonAuthorizer) LoadPoliciesFromJSONS(root string, fsys fs.FS) error {
 	return fs.WalkDir(fsys, root, func(path string, info fs.DirEntry, err error) error {
 		if filepath.Ext(path) != ".json" {
 			return nil
@@ -124,7 +132,7 @@ func (l *LadonAuthorizer) LoadPoliciesFromJSONS(root string, fsys fs.ReadFileFS)
 			return err
 		}
 
-		file, err := fsys.ReadFile(path)
+		file, err := fs.ReadFile(fsys, path)
 		if err != nil {
 			return fmt.Errorf("readfile %s: %w", path, err)
 		}
