@@ -76,7 +76,7 @@ func RequestJWT(keys *JWT, validator JWTValidator, enabler JWTEnabler) func(http
 
 				ctx = context.WithValue(ctx, RequestSubjectKey, t.Subject)
 				ctx = context.WithValue(ctx, RequestClaimsKey, t)
-				ctx = context.WithValue(ctx, RequestTokenKey, token)
+				ctx = context.WithValue(ctx, RequestTokenKey, token[0])
 			}
 
 			h.ServeHTTP(w, r.WithContext(ctx))
