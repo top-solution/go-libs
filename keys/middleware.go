@@ -15,6 +15,7 @@ type JWTEnabler func(req *http.Request) bool
 
 const RequestSubjectKey = contextKey("subject")
 const RequestClaimsKey = contextKey("claims")
+const RequestTokenKey = contextKey("token")
 
 var AlwaysEnabled = func(req *http.Request) bool { return true }
 var NoExtraValidation = func(req *http.Request, claims Claims) error { return nil }
@@ -75,6 +76,7 @@ func RequestJWT(keys *JWT, validator JWTValidator, enabler JWTEnabler) func(http
 
 				ctx = context.WithValue(ctx, RequestSubjectKey, t.Subject)
 				ctx = context.WithValue(ctx, RequestClaimsKey, t)
+				ctx = context.WithValue(ctx, RequestTokenKey, token)
 			}
 
 			h.ServeHTTP(w, r.WithContext(ctx))
@@ -96,4 +98,11 @@ func ClaimsFromContext(ctx context.Context) Claims {
 	}
 
 	return Claims{}
+}
+
+func TokenFromContext(ctx context.Context) string {
+	if elem, ok := ctx.Value(RequestTokenKey).(string); ok {
+		return elem
+	}
+	return ""
 }
