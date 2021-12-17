@@ -192,7 +192,7 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 
 	db, err := sql.Open(conf.Driver, connectionString)
 	if err != nil {
-		return nil, -1, err
+		return nil, -1, fmt.Errorf("open db: %w", err)
 	}
 
 	// Make sure the DB is actually reachable
@@ -211,17 +211,17 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 	goose.SetBaseFS(fsys)
 	err = goose.SetDialect(conf.Driver)
 	if err != nil {
-		return nil, -1, err
-	}
-
-	currentVersion, err := res.Version()
-	if err != nil {
-		return nil, -1, err
+		return nil, -1, fmt.Errorf("set dialect: %w", err)
 	}
 
 	// Don't run migrations if not requested
 	if !conf.Migrations.Run {
-		return res, currentVersion, nil
+		return res, -1, nil
+	}
+
+	currentVersion, err := res.Version()
+	if err != nil {
+		return nil, -1, fmt.Errorf("res version: %w", err)
 	}
 
 	return res, currentVersion, res.Up()
