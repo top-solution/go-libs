@@ -193,12 +193,17 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 			conf.Server, conf.Port, conf.User, conf.Password, conf.DB)
 	}
 
+	// Init Goose
+	err := goose.SetDialect(conf.Driver)
+	if err != nil {
+		return nil, -1, fmt.Errorf("set migrations dialect: %w", err)
+	}
+
+	goose.SetBaseFS(fsys)
+
 	currentVersion := int64(-1)
-	var err error
 
-	if fsys != nil && conf.Migrations.Run {
-		goose.SetBaseFS(fsys)
-
+	if conf.Migrations.Run {
 		// Goose wants to use the "sqlserver" driver, never "mssql"
 		driver := conf.Driver
 		if driver == "mssql" {
@@ -208,11 +213,6 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 		db, err := sql.Open(driver, connectionString)
 		if err != nil {
 			return nil, -1, fmt.Errorf("open db for migrations: %w", err)
-		}
-
-		err = goose.SetDialect(conf.Driver)
-		if err != nil {
-			return nil, -1, fmt.Errorf("set migrations dialect: %w", err)
 		}
 
 		currentVersion, err = goose.GetDBVersion(db)
