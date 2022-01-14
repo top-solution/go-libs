@@ -180,7 +180,7 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 	}
 
 	switch conf.Driver {
-	case "mssql", "sqlserver":
+	case "mssql":
 		if conf.User == "" {
 			connectionString = fmt.Sprintf("server=%s;port=%d;database=%s",
 				conf.Server, conf.Port, conf.DB)
@@ -193,6 +193,42 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 			conf.Server, conf.Port, conf.User, conf.Password, conf.DB)
 	}
 
+	currentVersion := int64(-1)
+	var err error
+
+	if fsys != nil && conf.Migrations.Run {
+		goose.SetBaseFS(fsys)
+
+		// Goose wants to use the "sqlserver" driver, never "mssql"
+		driver := conf.Driver
+		if driver == "mssql" {
+			driver = "sqlserver"
+		}
+
+		db, err := sql.Open(driver, connectionString)
+		if err != nil {
+			return nil, -1, fmt.Errorf("open db for migrations: %w", err)
+		}
+
+		err = goose.SetDialect(conf.Driver)
+		if err != nil {
+			return nil, -1, fmt.Errorf("set migrations dialect: %w", err)
+		}
+
+		currentVersion, err = goose.GetDBVersion(db)
+		if err != nil {
+			return nil, -1, fmt.Errorf("get db version: %w", err)
+		}
+
+		err = goose.Up(db, conf.Migrations.Path)
+		if err != nil {
+			return nil, -1, fmt.Errorf("migrate db: %w", err)
+		}
+
+		db.Close()
+	}
+
+	// sqlboiler wants to use the "mssql" driver, never "sqlserver"
 	db, err := sql.Open(conf.Driver, connectionString)
 	if err != nil {
 		return nil, -1, fmt.Errorf("open db: %w", err)
@@ -204,35 +240,7 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 		return nil, -1, fmt.Errorf("pinging DB server: %w", err)
 	}
 
-	res := &DB{DB: db, conf: conf, fsys: fsys}
-
-	// If fsys is not set, skip migrations
-	if fsys == nil {
-		return res, -1, nil
-	}
-
-	goose.SetBaseFS(fsys)
-
-	dialect := conf.Driver
-	if conf.Driver == "sqlserver" {
-		dialect = "mssql"
-	}
-	err = goose.SetDialect(dialect)
-	if err != nil {
-		return nil, -1, fmt.Errorf("set dialect: %w", err)
-	}
-
-	// Don't run migrations if not requested
-	if !conf.Migrations.Run {
-		return res, -1, nil
-	}
-
-	currentVersion, err := res.Version()
-	if err != nil {
-		return nil, -1, fmt.Errorf("res version: %w", err)
-	}
-
-	return res, currentVersion, res.Up()
+	return &DB{DB: db, conf: conf, fsys: fsys}, currentVersion, nil
 }
 
 // Up runs the migrations up to the latest version
