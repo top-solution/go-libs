@@ -175,15 +175,18 @@ type DB struct {
 func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 	connectionString := ""
 
+	if conf.Driver == "" {
+		return nil, 0, errors.New("no SQL driver specified: please use one of [mssql,sqlserver,postgres]")
+	}
+
 	switch conf.Driver {
-	case "mssql", "":
-		conf.Driver = "mssql"
+	case "mssql", "sqlserver":
 		if conf.User == "" {
 			connectionString = fmt.Sprintf("server=%s;port=%d;database=%s",
 				conf.Server, conf.Port, conf.DB)
 		} else {
-			connectionString = fmt.Sprintf("%s://%s:%s@%s:%d?database=%s",
-				conf.Type, conf.User, conf.Password, conf.Server, conf.Port, conf.DB)
+			connectionString = fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s",
+				conf.User, conf.Password, conf.Server, conf.Port, conf.DB)
 		}
 	case "postgres":
 		connectionString = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
@@ -209,7 +212,12 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 	}
 
 	goose.SetBaseFS(fsys)
-	err = goose.SetDialect(conf.Driver)
+
+	dialect := conf.Driver
+	if conf.Driver == "sqlserver" {
+		dialect = "mssql"
+	}
+	err = goose.SetDialect(dialect)
 	if err != nil {
 		return nil, -1, fmt.Errorf("set dialect: %w", err)
 	}

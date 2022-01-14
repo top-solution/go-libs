@@ -117,8 +117,6 @@ type LogConfig struct {
 type DBConfig struct {
 	// Driver is the driver name
 	Driver string `yaml:"driver" conf:"help:The db driver name"`
-	// Type is the DB type: it's a MSSQL thing
-	Type string `yaml:"type" conf:"default:sqlserver,help:The db type (for mssql)"`
 	// Server is db host address
 	Server string `yaml:"server" conf:"help:The db host"`
 	// Port is the db port
