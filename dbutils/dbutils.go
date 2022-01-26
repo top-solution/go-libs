@@ -74,20 +74,20 @@ var WhereFilters = map[string]string{
 }
 
 // ParseFilters generates an sqlboiler's QueryMod starting from an user-inputted attribute, user-inputted data, and an attribute->column map
-// The
-func (f FilterMap) ParseFilters(attribute string, data string) (QueryMod, error) {
+// It also returns the parsed operator and value
+func (f FilterMap) ParseFilters(attribute string, data string) (QueryMod, string, interface{}, error) {
 	if _, ok := f[attribute]; !ok {
-		return nil, fmt.Errorf("Attribute %s not found", attribute)
+		return nil, "", nil, fmt.Errorf("Attribute %s not found", attribute)
 	}
 	d := strings.SplitN(data, ":", 2)
 	if _, ok := WhereFilters[d[0]]; !ok {
-		return nil, fmt.Errorf("Operation %s not valid", d[0])
+		return nil, d[0], nil, fmt.Errorf("Operation %s not valid", d[0])
 	}
 	if d[0] == "isNull" || d[0] == "isNotNull" {
-		return Where(f[attribute] + WhereFilters[d[0]]), nil
+		return Where(f[attribute] + WhereFilters[d[0]]), d[0], nil, nil
 	}
 	if len(d) < 2 {
-		return nil, fmt.Errorf("Invalid format data: %s", data)
+		return nil, d[0], nil, fmt.Errorf("Invalid format data: %s", data)
 	}
 	if d[0] == "in" || d[0] == "notIn" {
 		var value []interface{}
@@ -96,16 +96,16 @@ func (f FilterMap) ParseFilters(attribute string, data string) (QueryMod, error)
 			value = append(value, v)
 		}
 		if d[0] == "in" {
-			return WhereIn(f[attribute]+WhereFilters[d[0]], value...), nil
+			return WhereIn(f[attribute]+WhereFilters[d[0]], value...), d[0], value, nil
 		}
-		return WhereNotIn(f[attribute]+WhereFilters[d[0]], value...), nil
+		return WhereNotIn(f[attribute]+WhereFilters[d[0]], value...), d[0], value, nil
 	}
-	return Where(f[attribute]+WhereFilters[d[0]], d[1]), nil
+	return Where(f[attribute]+WhereFilters[d[0]], d[1]), d[0], d[1], nil
 }
 
-// AddPagination adds the parsed filters to the query
+// AddFilters adds the parsed filters to the query
 func (f FilterMap) AddFilters(query *[]QueryMod, attribute string, data string) (err error) {
-	mod, err := f.ParseFilters(attribute, data)
+	mod, _, _, err := f.ParseFilters(attribute, data)
 	if err != nil {
 		return err
 	}
