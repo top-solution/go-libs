@@ -22,6 +22,7 @@ type Claims struct {
 	Lastname  string                 `json:"lastname,omitempty"`
 	AppID     string                 `json:"appID,omitempty"`
 	Extra     map[string]interface{} `json:"extra,omitempty"`
+	PlantID   int                    `json:"plantID, omitempty"`
 }
 
 type JWT struct {
