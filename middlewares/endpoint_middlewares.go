@@ -43,8 +43,14 @@ func LogStartEndpoint() func(goa.Endpoint) goa.Endpoint {
 	return func(e goa.Endpoint) goa.Endpoint {
 		return func(ctx context.Context, req interface{}) (interface{}, error) {
 			meta, _ := meta.ContextMeta(ctx)
-			ctx = ctxlog.WithFields(ctx, "method", meta.Method, "payload", meta.Payload, "service", meta.Service)
-			ctxlog.Info(ctx, "action", "start")
+
+			if ShouldLogPayloads && meta.Service != "" {
+				ctx = ctxlog.WithFields(ctx, "method", meta.Method, "payload", meta.Payload, "service", meta.Service)
+			}
+
+			if !shouldSkipLogging(meta) {
+				ctxlog.Info(ctx, "action", "start")
+			}
 
 			res, err := e(ctx, req)
 

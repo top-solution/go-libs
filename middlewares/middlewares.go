@@ -19,6 +19,9 @@ import (
 	"goa.design/plugins/cors"
 )
 
+var SkipLogsFunc = func(meta *meta.Meta) bool { return false }
+var ShouldLogPayloads = true
+
 func DefaultMiddlewares(handler http.Handler, server Server) http.Handler {
 	// Remember that they have to be in reverse order
 	// Recover ensure that requests cannot panic
@@ -112,7 +115,7 @@ func LogEnd() func(h http.Handler) http.Handler {
 			rw := httpmdlwr.CaptureResponse(w)
 			h.ServeHTTP(rw, r)
 
-			if meta.Service == "alive" && meta.Method == "alive" || meta.Service == "" {
+			if shouldSkipLogging(meta) {
 				return
 			}
 
@@ -219,4 +222,15 @@ func Cors(allowedOrigins string) func(http.Handler) http.Handler {
 			h.ServeHTTP(w, r)
 		})
 	}
+}
+
+var fileExtRegex = regexp.MustCompile(`\.\w{3}$`)
+
+func shouldSkipLogging(meta *meta.Meta) bool {
+	// skip logging if:
+	return meta == nil || // there is not metadata
+		SkipLogsFunc(meta) || // an user-provided func says so
+		meta.Service == "alive" && meta.Method == "alive" || // it's the alive endpoint
+		meta.Service == "Version" && meta.Method == "get" || // it's the standard-ish version endpoint
+		fileExtRegex.Match([]byte(meta.URL)) // a file-looking URL was requested
 }
