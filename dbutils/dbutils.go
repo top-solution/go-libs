@@ -26,7 +26,7 @@ type FilterMap map[string]string
 // The user values should look like "field" (ASC) or "-field" (DESC)
 func (f FilterMap) ParseSorting(sort []string) (QueryMod, error) {
 	if len(sort) == 0 {
-		return nil, nil
+		return nil, ErrEmptySort
 	}
 	sortList := []string{}
 	for _, elem := range sort {
