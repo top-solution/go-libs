@@ -9,8 +9,8 @@ import (
 
 	"github.com/ardanlabs/conf/v2"
 	"github.com/goccy/go-yaml"
-	"gitlab.com/top-solution/go-libs/frequency"
-	"gitlab.com/top-solution/go-libs/version"
+	"github.com/serjlee/frequency"
+	"github.com/top-solution/go-libs/version"
 )
 
 var baseFlags = struct {
@@ -49,7 +49,7 @@ func readYamlConf(path string) (c yamlConfParser, err error) {
 // It will also provide a way to set config values via env vars or flags, and add a --version and --help command in the final executable
 //
 // The --help text will be populated by analyzing the struct of the passed cfg
-// The --version text will be populated via gitlab.com/top-solution/go-libs/version
+// The --version text will be populated via github.com/top-solution/go-libs/version
 func ParseConfigAndVersion(cfg interface{}) error {
 	// Build version info
 	versionInfo := version.GetInfo()

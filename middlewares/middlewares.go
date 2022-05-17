@@ -9,10 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codeclysm/ctxlog"
+	"github.com/sirupsen/logrus"
+
 	log "github.com/inconshreveable/log15"
-	"gitlab.com/top-solution/go-libs/logging/ctxlog"
-	"gitlab.com/top-solution/go-libs/middlewares/appID"
-	"gitlab.com/top-solution/go-libs/middlewares/meta"
+	"github.com/top-solution/go-libs/middlewares/appID"
+	"github.com/top-solution/go-libs/middlewares/meta"
 	goahttp "goa.design/goa/v3/http"
 	httpmdlwr "goa.design/goa/v3/http/middleware"
 	goamdlwr "goa.design/goa/v3/middleware"
@@ -119,14 +121,16 @@ func LogEnd() func(h http.Handler) http.Handler {
 				return
 			}
 
-			ctx = ctxlog.WithFields(ctx,
-				"bytes", rw.ContentLength,
-				"duration", meta.Duration.String(),
-				"method", meta.Method,
-				"service", meta.Service,
-				"status", rw.StatusCode,
-				"url", meta.URL,
-				"verb", meta.Verb)
+			ctx = ctxlog.WithFields(ctx, logrus.Fields{
+				"bytes":    rw.ContentLength,
+				"duration": meta.Duration.String(),
+				"method":   meta.Method,
+				"service":  meta.Service,
+				"status":   rw.StatusCode,
+				"url":      meta.URL,
+				"verb":     meta.Verb,
+			})
+
 			ctxlog.Info(ctx, "action", "end")
 		})
 	}

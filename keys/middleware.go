@@ -48,12 +48,12 @@ func RequestJWT(keys *JWT, validator JWTValidator, enabler JWTEnabler) func(http
 			if enabler(r) {
 				token := r.Header["Authorization"]
 				if len(token) == 0 {
-					http.Error(w, "missing authorization header", 401)
+					http.Error(w, "missing authorization header", http.StatusUnauthorized)
 					return
 				}
 				tok := token[0]
 				if !strings.HasPrefix(strings.ToLower(tok), "bearer ") {
-					http.Error(w, "invalid authorization header", 401)
+					http.Error(w, "invalid authorization header", http.StatusUnauthorized)
 					return
 				}
 
@@ -62,15 +62,15 @@ func RequestJWT(keys *JWT, validator JWTValidator, enabler JWTEnabler) func(http
 				t, err := keys.ParseAndValidateToken(tok)
 				if err != nil {
 					if errors.Is(err, ErrInvalidToken) {
-						http.Error(w, err.Error(), 403)
+						http.Error(w, err.Error(), http.StatusForbidden)
 					}
-					http.Error(w, err.Error(), 500)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 
 				err = validator(r, t)
 				if err != nil {
-					http.Error(w, err.Error(), 403)
+					http.Error(w, err.Error(), http.StatusForbidden)
 					return
 				}
 

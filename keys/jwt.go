@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
-	"gitlab.com/top-solution/go-libs/logging/ctxlog"
+	"github.com/codeclysm/ctxlog"
+	jwt "github.com/golang-jwt/jwt/v4"
 )
 
 type Claims struct {
@@ -22,7 +22,6 @@ type Claims struct {
 	Lastname  string                 `json:"lastname,omitempty"`
 	AppID     string                 `json:"appID,omitempty"`
 	Extra     map[string]interface{} `json:"extra,omitempty"`
-	PlantID   *int                   `json:"plantID,omitempty"`
 }
 
 type JWT struct {
@@ -127,7 +126,7 @@ func (j *JWT) TokenFromMap(data map[string]interface{}) (string, error) {
 func (j *JWT) ParseAndValidateToken(tokenString string) (claims Claims, err error) {
 	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
 		return j.PublicKey, nil

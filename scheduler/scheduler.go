@@ -1,8 +1,10 @@
-package frequency
+package scheduler
 
 import (
 	"sync"
 	"time"
+
+	"github.com/serjlee/frequency"
 )
 
 var DefaultScheduler = NewScheduler()
@@ -19,14 +21,14 @@ type LastRunTimeFn func() time.Time
 
 // Entry consists of a frequency and the TaskFn to execute on that frequency
 type Entry struct {
-	Frequency     Frequency
+	Frequency     frequency.Frequency
 	NextRun       time.Time
 	LastRun       time.Time
 	TaskFn        TaskFn
 	LastRunTimeFn LastRunTimeFn
 }
 
-func newEntry(Frequency Frequency) *Entry {
+func newEntry(Frequency frequency.Frequency) *Entry {
 	return &Entry{
 		Frequency: Frequency,
 		LastRun:   time.Unix(0, 0),
@@ -64,7 +66,7 @@ func NewScheduler() *Scheduler {
 }
 
 // Every schedules a new Entry and returns it.
-func (c *Scheduler) Every(frequency Frequency) *Entry {
+func (c *Scheduler) Every(frequency frequency.Frequency) *Entry {
 	entry := newEntry(frequency)
 
 	c.schedule(entry)
@@ -73,7 +75,7 @@ func (c *Scheduler) Every(frequency Frequency) *Entry {
 	defer c.mu.Unlock()
 
 	// The minimum unit is a day: run it with some lazyness
-	if frequency.duration == 0 {
+	if frequency.IsZero() {
 		c.lowResolutionEntries = append(c.lowResolutionEntries, entry)
 	} else {
 		c.entries = append(c.entries, entry)

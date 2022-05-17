@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/pressly/goose/v3"
+	"github.com/top-solution/go-libs/config"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"gitlab.com/top-solution/go-libs/config"
 )
 
 // ErrEmptySort is raised when ParseSorting is called with an empty slice

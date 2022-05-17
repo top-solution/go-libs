@@ -3,8 +3,10 @@ package middlewares
 import (
 	"context"
 
-	"gitlab.com/top-solution/go-libs/logging/ctxlog"
-	"gitlab.com/top-solution/go-libs/middlewares/meta"
+	"github.com/codeclysm/ctxlog"
+	"github.com/sirupsen/logrus"
+
+	"github.com/top-solution/go-libs/middlewares/meta"
 	goa "goa.design/goa/v3/pkg"
 )
 
@@ -45,7 +47,7 @@ func LogStartEndpoint() func(goa.Endpoint) goa.Endpoint {
 			meta, _ := meta.ContextMeta(ctx)
 
 			if ShouldLogPayloads && meta.Service != "" {
-				ctx = ctxlog.WithFields(ctx, "method", meta.Method, "payload", meta.Payload, "service", meta.Service)
+				ctx = ctxlog.WithFields(ctx, logrus.Fields{"method": meta.Method, "payload": meta.Payload, "service": meta.Service})
 			}
 
 			if !shouldSkipLogging(meta) {

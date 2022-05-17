@@ -1,3 +1,5 @@
+// package version helps in including version information inside the binary
+// ie: go build -ldflags="-X github.com/top-solution/go-libs/version.version=${GITHUB_REF_NAME} -X github.com/top-solution/go-libs/version.commit=${GITHUB_SHA} -X github.com/top-solution/go-libs/version.buildDate=$(date -I'seconds')"
 package version
 
 import (

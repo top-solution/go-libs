@@ -8,11 +8,12 @@ import (
 	"time"
 
 	log "github.com/inconshreveable/log15"
-	"gitlab.com/top-solution/go-libs/config"
-	"gitlab.com/top-solution/go-libs/frequency"
+	"github.com/serjlee/frequency"
+	"github.com/top-solution/go-libs/config"
+	"github.com/top-solution/go-libs/scheduler"
 )
 
-var cleanupLogsTask *frequency.Entry
+var cleanupLogsTask *scheduler.Entry
 
 func InitFileLogger(logger log.Logger, config config.LogConfig) error {
 	if config.Path == "" {
@@ -64,7 +65,7 @@ func InitFileLogger(logger log.Logger, config config.LogConfig) error {
 		cleanupLogsTask.TaskFn = cleanupFn
 	}
 	// Check and delete old logs hourly
-	cleanupLogsTask = frequency.DefaultScheduler.Every(frequency.FromDuration(1 * time.Hour)).Do(cleanupFn)
+	cleanupLogsTask = scheduler.DefaultScheduler.Every(frequency.FromDuration(1 * time.Hour)).Do(cleanupFn)
 
 	return nil
 }
