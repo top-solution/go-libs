@@ -62,7 +62,7 @@ func (s Server) ListenGracefully(handler http.Handler, host string, port int) {
 		// We received an interrupt signal, shut down.
 		if err := srv.Shutdown(context.Background()); err != nil {
 			// Error from closing listeners, or context timeout:
-			s.Log.Error("HTTP server Shutdown: %v", err)
+			s.Log.Error("HTTP server Shutdown", "err", err)
 		}
 
 		close(idleConnsClosed)
@@ -70,7 +70,7 @@ func (s Server) ListenGracefully(handler http.Handler, host string, port int) {
 
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		// Error starting or closing listener:
-		s.Log.Error("HTTP server ListenAndServe: %v", err)
+		s.Log.Error("HTTP server ListenAndServe", "err", err)
 	}
 
 	<-idleConnsClosed
