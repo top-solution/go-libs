@@ -13,6 +13,7 @@ require (
 	github.com/ory/ladon v1.2.0
 	github.com/pressly/goose/v3 v3.4.1
 	github.com/serjlee/frequency v0.0.0-20220208211258-20a3cde71a58
+	github.com/sirupsen/logrus v1.8.1
 	github.com/volatiletech/sqlboiler/v4 v4.6.0
 	goa.design/goa/v3 v3.2.6
 	goa.design/plugins v2.2.6+incompatible
@@ -35,7 +36,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect

@@ -21,7 +21,11 @@ import (
 	"goa.design/plugins/cors"
 )
 
-var SkipLogsFunc = func(meta *meta.Meta) bool { return false }
+type MetaCondition func(meta *meta.Meta) bool
+
+var NeverCondition = func(meta *meta.Meta) bool { return false }
+var AlwaysCondition = func(meta *meta.Meta) bool { return true }
+
 var ShouldLogPayloads = true
 
 func DefaultMiddlewares(handler http.Handler, server Server) http.Handler {
@@ -33,7 +37,7 @@ func DefaultMiddlewares(handler http.Handler, server Server) http.Handler {
 	handler = Duration()(handler)
 
 	// LogEnd logs the end of every request (except for the alive service)
-	handler = LogEnd()(handler)
+	handler = LogEnd(AlwaysCondition)(handler)
 
 	// RequestID reads the request id from headers or generate a new one
 	handler = RequestID()(handler)
@@ -45,7 +49,7 @@ func DefaultMiddlewares(handler http.Handler, server Server) http.Handler {
 	handler = Vary()(handler)
 
 	// NoCache adds the Cache-Control headers
-	handler = NoCache()(handler)
+	handler = NoCache(AlwaysCondition)(handler)
 
 	// RequestMeta adds a shared meta struct in the chain of middlewares
 	handler = meta.RequestMeta()(handler)
@@ -109,7 +113,7 @@ func Duration() func(h http.Handler) http.Handler {
 
 // LogEnd uses the ctxlogger to output info about the request
 // It requires the meta middleware to work properly and retrieve the method and service fields
-func LogEnd() func(h http.Handler) http.Handler {
+func LogEnd(shouldLogFunc MetaCondition) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -117,7 +121,7 @@ func LogEnd() func(h http.Handler) http.Handler {
 			rw := httpmdlwr.CaptureResponse(w)
 			h.ServeHTTP(rw, r)
 
-			if shouldSkipLogging(meta) {
+			if shouldLog(meta, shouldLogFunc) {
 				return
 			}
 
@@ -188,12 +192,19 @@ func Vary() func(http.Handler) http.Handler {
 }
 
 // NoCache is a middleware that adds NoCache headers to every request
-func NoCache() func(http.Handler) http.Handler {
+func NoCache(shouldSkipCacheFunc MetaCondition) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-			w.Header().Set("Pragma", "no-cache")
-			w.Header().Set("Expires", "0")
+			ctx := r.Context()
+			meta, ok := meta.ContextMeta(ctx)
+			if !ok {
+				panic("metadata not found in context. Have you setup the meta.RequestMeta middleware?")
+			}
+			if shouldSkipCacheFunc(meta) {
+				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+				w.Header().Set("Pragma", "no-cache")
+				w.Header().Set("Expires", "0")
+			}
 
 			h.ServeHTTP(w, r)
 		})
@@ -230,11 +241,6 @@ func Cors(allowedOrigins string) func(http.Handler) http.Handler {
 
 var fileExtRegex = regexp.MustCompile(`\.\w{3}$`)
 
-func shouldSkipLogging(meta *meta.Meta) bool {
-	// skip logging if:
-	return meta == nil || // there is not metadata
-		SkipLogsFunc(meta) || // an user-provided func says so
-		meta.Service == "alive" && meta.Method == "alive" || // it's the alive endpoint
-		meta.Service == "Version" && meta.Method == "get" || // it's the standard-ish version endpoint
-		fileExtRegex.Match([]byte(meta.URL)) // a file-looking URL was requested
+func shouldLog(meta *meta.Meta, shouldLogFunc MetaCondition) bool {
+	return meta != nil && meta.Service != "alive" && meta.Service != "Version" && shouldLogFunc(meta) && !fileExtRegex.Match([]byte(meta.URL))
 }

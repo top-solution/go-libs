@@ -12,7 +12,7 @@ import (
 
 func DefaultEndpointMiddlewares(endpoints Endpoints) Endpoints {
 	endpoints.Use(LogError())
-	endpoints.Use(LogStartEndpoint())
+	endpoints.Use(LogStartEndpoint(NeverCondition))
 	endpoints.Use(RequestMetaEndpoint())
 
 	return endpoints
@@ -41,7 +41,7 @@ func RequestMetaEndpoint() func(goa.Endpoint) goa.Endpoint {
 
 // LogStartEndpoint logs the request start, and enrichs the logger with info about the request.
 // note that this middleware only runs if a matching method exists, and the request didn't fail its validation
-func LogStartEndpoint() func(goa.Endpoint) goa.Endpoint {
+func LogStartEndpoint(shouldLogFunc MetaCondition) func(goa.Endpoint) goa.Endpoint {
 	return func(e goa.Endpoint) goa.Endpoint {
 		return func(ctx context.Context, req interface{}) (interface{}, error) {
 			meta, _ := meta.ContextMeta(ctx)
@@ -50,7 +50,7 @@ func LogStartEndpoint() func(goa.Endpoint) goa.Endpoint {
 				ctx = ctxlog.WithFields(ctx, logrus.Fields{"method": meta.Method, "payload": meta.Payload, "service": meta.Service})
 			}
 
-			if !shouldSkipLogging(meta) {
+			if !shouldLog(meta, shouldLogFunc) {
 				ctxlog.Info(ctx, "action", "start")
 			}
 
