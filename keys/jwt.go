@@ -15,7 +15,7 @@ import (
 )
 
 type Claims struct {
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 	Role      []string               `json:"roles,omitempty"`
 	Username  string                 `json:"username,omitempty"`
 	Firstname string                 `json:"firstname,omitempty"`
