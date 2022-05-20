@@ -130,7 +130,7 @@ func (j *JWT) ParseAndValidateToken(tokenString string) (claims Claims, err erro
 		}
 
 		return j.PublicKey, nil
-	})
+	}, jwt.WithJSONNumber())
 	if err != nil {
 		return claims, fmt.Errorf("%w: %s", ErrInvalidToken, err.Error())
 	}
