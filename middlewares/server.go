@@ -2,13 +2,17 @@ package middlewares
 
 import (
 	"context"
+	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	log "github.com/inconshreveable/log15"
+	fslib "github.com/top-solution/go-libs/fs"
 	"github.com/top-solution/go-libs/middlewares/meta"
 	goahttp "goa.design/goa/v3/http"
 	goa "goa.design/goa/v3/pkg"
@@ -76,6 +80,40 @@ func (s Server) ListenGracefully(handler http.Handler, host string, port int) {
 	<-idleConnsClosed
 
 	s.Log.Info("Shutdown")
+}
+
+// AddWebappHandler is an helper that adds a filehandler to the GET / and GET /* routes
+// The idea is to serve a web applicatiom through it, except for the path starting with prefixesToExclude
+// It will use a FallbackFs to serve the specificied root file as a deafault asset
+func (s Server) AddWebappHandler(fs fs.FS, rootfile string, prefixesToExclude ...string) {
+	fileHandler := func(rw http.ResponseWriter, r *http.Request) {
+		http.FileServer(http.FS(&fslib.FallbackFs{FS: fs, Fallback: rootfile})).ServeHTTP(rw, r)
+	}
+
+	webappHandler := func(rw http.ResponseWriter, r *http.Request) {
+		exclude := false
+		for _, p := range prefixesToExclude {
+			if strings.HasPrefix(r.URL.Path, p) {
+				exclude = true
+				break
+			}
+		}
+		if exclude {
+			ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
+			enc := goahttp.ResponseEncoder(ctx, rw)
+			rw.WriteHeader(http.StatusNotFound)
+			err := enc.Encode(goahttp.NewErrorResponse(fmt.Errorf("404 page not found")))
+			if err != nil {
+				return
+			}
+		} else {
+			fileHandler(rw, r)
+		}
+	}
+
+	s.Mux.Handle("GET", "/*", webappHandler)
+	s.Mux.Handle("GET", "/", webappHandler)
+	s.Log.Info("Webapp is served served @ /", "verb", "GET")
 }
 
 type Endpoints interface {
