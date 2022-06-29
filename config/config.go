@@ -9,6 +9,7 @@ import (
 
 	"github.com/ardanlabs/conf/v2"
 	"github.com/goccy/go-yaml"
+	log "github.com/inconshreveable/log15"
 	"github.com/serjlee/frequency"
 	"github.com/top-solution/go-libs/version"
 )
@@ -81,11 +82,15 @@ func ParseConfigAndVersion(cfg interface{}) error {
 // ParseConfig parses a file config, given the file path, expecting the prefix
 // See ardanlabs/conf's docs to see the usefulness of a prefix
 func ParseConfigWithPrefix(cfg interface{}, path string, prefix string) error {
+	var help string
+	var err error
 	yamlConfData, err := readYamlConf(path)
-	if err != nil {
-		return err
+	if err == nil {
+		help, err = conf.Parse(prefix, cfg, yamlConfData)
+	} else {
+		log.Root().Warn("unable to read YAML config from " + path + ": skipping")
+		help, err = conf.Parse(prefix, cfg)
 	}
-	help, err := conf.Parse(prefix, cfg, yamlConfData)
 	if err != nil {
 		if errors.Is(err, conf.ErrHelpWanted) {
 			fmt.Println(help)
