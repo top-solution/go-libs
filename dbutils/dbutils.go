@@ -12,12 +12,20 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/top-solution/go-libs/config"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // ErrEmptySort is raised when ParseSorting is called with an empty slice
 // You should either handle it or use AddSorting instead
 var ErrEmptySort = errors.New("at least a sort parameter is required")
+
+// QueryMods is an helper that allows treating arrays of QueryMod as a single QueryMod
+type QueryMods []QueryMod
+
+func (m QueryMods) Apply(q *queries.Query) {
+	Apply(q, m...)
+}
 
 // FilterMap maps the "public" name of an attribute with a DB column
 type FilterMap map[string]string
@@ -36,7 +44,7 @@ func (f FilterMap) ParseSorting(sort []string) (QueryMod, error) {
 			elem = elem[1:]
 		}
 		if _, ok := f[elem]; !ok {
-			return nil, fmt.Errorf("Attribute %s not found", elem)
+			return nil, fmt.Errorf("attribute %s not found", elem)
 		}
 		sortList = append(sortList, f[elem]+direction)
 	}
@@ -67,45 +75,69 @@ var WhereFilters = map[string]string{
 	"lte":       " <= ?",
 	"gt":        " > ?",
 	"gte":       " >= ?",
-	"isNull":    " IS NULL ",
-	"isNotNull": " IS NOT NULL ",
+	"isNull":    " IS NULL",
+	"isNotNull": " IS NOT NULL",
 	"in":        " IN ?",
 	"notIn":     " NOT IN ?",
 }
 
 // ParseFilters generates an sqlboiler's QueryMod starting from an user-inputted attribute, user-inputted data, and an attribute->column map
 // It also returns the parsed operator and value
-func (f FilterMap) ParseFilters(attribute string, data string) (QueryMod, string, interface{}, error) {
+func (f FilterMap) ParseFilters(attribute string, filters ...string) (QueryMod, []string, []interface{}, error) {
+	var qmods QueryMods
+	var ops []string
+	var vals []interface{}
+
 	if _, ok := f[attribute]; !ok {
-		return nil, "", nil, fmt.Errorf("Attribute %s not found", attribute)
+		return nil, nil, nil, fmt.Errorf("attribute %s not found", attribute)
 	}
-	d := strings.SplitN(data, ":", 2)
-	if _, ok := WhereFilters[d[0]]; !ok {
-		return nil, d[0], nil, fmt.Errorf("Operation %s not valid", d[0])
+
+	for _, filter := range filters {
+		spl := strings.SplitN(filter, ":", 2)
+		op := spl[0]
+		rawValue := ""
+		if len(spl) < 2 {
+			if op != "isNull" && op != "isNotNull" {
+				return nil, nil, nil, fmt.Errorf("operation %s is not valid", op)
+			}
+		} else {
+			rawValue = spl[1]
+		}
+		if _, ok := WhereFilters[op]; !ok {
+			return nil, nil, nil, fmt.Errorf("operation %s is not implemented", op)
+		}
+		qmod, val, err := f.parseFilter(attribute, op, rawValue)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		ops = append(ops, op)
+		qmods = append(qmods, qmod)
+		vals = append(vals, val)
 	}
-	if d[0] == "isNull" || d[0] == "isNotNull" {
-		return Where(f[attribute] + WhereFilters[d[0]]), d[0], nil, nil
+	return qmods, ops, vals, nil
+}
+
+func (f FilterMap) parseFilter(attribute string, op string, rawValue string) (QueryMod, interface{}, error) {
+	if op == "isNull" || op == "isNotNull" {
+		return Where(f[attribute] + WhereFilters[op]), nil, nil
 	}
-	if len(d) < 2 {
-		return nil, d[0], nil, fmt.Errorf("Invalid format data: %s", data)
-	}
-	if d[0] == "in" || d[0] == "notIn" {
+	if op == "in" || op == "notIn" {
 		var value []interface{}
-		stringValue := strings.Split(d[1], ",")
+		stringValue := strings.Split(rawValue, ",")
 		for _, v := range stringValue {
 			value = append(value, v)
 		}
-		if d[0] == "in" {
-			return WhereIn(f[attribute]+WhereFilters[d[0]], value...), d[0], value, nil
+		if op == "in" {
+			return WhereIn(f[attribute]+WhereFilters[op], value...), value, nil
 		}
-		return WhereNotIn(f[attribute]+WhereFilters[d[0]], value...), d[0], value, nil
+		return WhereNotIn(f[attribute]+WhereFilters[op], value...), value, nil
 	}
-	return Where(f[attribute]+WhereFilters[d[0]], d[1]), d[0], d[1], nil
+	return Where(f[attribute]+WhereFilters[op], rawValue), rawValue, nil
 }
 
 // AddFilters adds the parsed filters to the query
-func (f FilterMap) AddFilters(query *[]QueryMod, attribute string, data string) (err error) {
-	mod, _, _, err := f.ParseFilters(attribute, data)
+func (f FilterMap) AddFilters(query *[]QueryMod, attribute string, data ...string) (err error) {
+	mod, _, _, err := f.ParseFilters(attribute, data...)
 	if err != nil {
 		return err
 	}
@@ -117,7 +149,7 @@ func (f FilterMap) AddFilters(query *[]QueryMod, attribute string, data string) 
 func ParsePagination(offset *int, limit *int) (res []QueryMod, err error) {
 	res = []QueryMod{}
 	if (limit != nil && offset == nil) || (limit == nil && offset != nil) {
-		return nil, errors.New("Invalid pagination parameters")
+		return nil, errors.New("invalid pagination parameters")
 	}
 	if limit != nil && offset != nil {
 		res = append(res, Limit(*limit), Offset(*offset))
