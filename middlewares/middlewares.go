@@ -121,7 +121,7 @@ func LogEnd(shouldLogFunc MetaCondition) func(h http.Handler) http.Handler {
 			rw := httpmdlwr.CaptureResponse(w)
 			h.ServeHTTP(rw, r)
 
-			if shouldLog(meta, shouldLogFunc) {
+			if !shouldLog(meta, shouldLogFunc) {
 				return
 			}
 
