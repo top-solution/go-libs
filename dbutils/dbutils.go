@@ -8,6 +8,7 @@ import (
 	"log"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/pressly/goose/v3"
 	"github.com/top-solution/go-libs/config"
@@ -19,6 +20,8 @@ import (
 // ErrEmptySort is raised when ParseSorting is called with an empty slice
 // You should either handle it or use AddSorting instead
 var ErrEmptySort = errors.New("at least a sort parameter is required")
+
+var connectionRetries = []time.Duration{1, 1, 2, 2, 3, 5, 8}
 
 // QueryMods is an helper that allows treating arrays of QueryMod as a single QueryMod
 type QueryMods []QueryMod
@@ -267,7 +270,13 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 	}
 
 	// Make sure the DB is actually reachable
-	err = db.Ping()
+	for _, delay := range connectionRetries {
+		err = db.Ping()
+		if err == nil {
+			break
+		}
+		time.Sleep(delay * time.Second)
+	}
 	if err != nil {
 		return nil, -1, fmt.Errorf("pinging DB server: %w", err)
 	}
