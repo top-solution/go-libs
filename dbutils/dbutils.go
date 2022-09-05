@@ -237,6 +237,7 @@ func TxOr(ctx context.Context, fallback boil.Executor) boil.Executor {
 	return tx
 }
 
+// Tx extracts a transaction from a context, returns nil if no transaxction is found
 func Tx(ctx context.Context) *sql.Tx {
 	tx, ok := ctx.Value(TxKey).(*sql.Tx)
 	if !ok {
