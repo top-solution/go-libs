@@ -1,6 +1,7 @@
 package dbutils
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -16,6 +17,11 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+type txctx string
+
+// TxKey holds a transaction in a ctx
+var TxKey txctx = "transaction"
 
 // ErrEmptySort is raised when ParseSorting is called with an empty slice
 // You should either handle it or use AddSorting instead
@@ -195,6 +201,28 @@ func Transaction(db boil.Beginner, txFunc func(*sql.Tx) error) (err error) {
 	}()
 	err = txFunc(tx)
 	return err
+}
+
+// TransactionCtx is the same as Transaction, but embeds the transaction in the given context
+func TransactionCtx(db boil.Beginner, ctx context.Context, txFunc func(context.Context) error) (err error) {
+	return Transaction(db, func(tx *sql.Tx) error {
+		ctx = WithTx(ctx, tx)
+		return txFunc(ctx)
+	})
+}
+
+// WithTx enriches a context with a transaction
+func WithTx(ctx context.Context, tx *sql.Tx) context.Context {
+	return context.WithValue(ctx, TxKey, tx)
+}
+
+// Tx extracts a transaction from a context, with a fallback
+func Tx(ctx context.Context, fallback boil.Executor) boil.Executor {
+	tx, ok := ctx.Value(TxKey).(*sql.Tx)
+	if !ok {
+		return fallback
+	}
+	return tx
 }
 
 // DB is a wrapper for *sql.DB, providing a few utilities to handle migrations
