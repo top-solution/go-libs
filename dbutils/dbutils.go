@@ -203,17 +203,20 @@ func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx co
 	defer func() {
 		//nolint:gocritic
 		if p := recover(); p != nil {
-			err = tx.Rollback()
-			if err != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
 				panic(p)
 			}
 			log.Printf("%s: %s", p, debug.Stack())
-			err = errors.New("transaction failed")
+			err = fmt.Errorf("transaction failed: %w", err)
 		} else if err != nil {
 			rollbackErr := tx.Rollback() // err is non-nil; don't change it
 			log.Println(rollbackErr)
 		} else {
 			err = tx.Commit() // err is nil; if Commit returns an error, update err
+			if err != nil {
+				log.Printf("%s: %s", p, debug.Stack())
+			}
 		}
 	}()
 	err = txFunc(ctx)
