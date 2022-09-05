@@ -211,7 +211,9 @@ func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx co
 			err = fmt.Errorf("transaction failed: %w", err)
 		} else if err != nil {
 			rollbackErr := tx.Rollback() // err is non-nil; don't change it
-			log.Println(rollbackErr)
+			if rollbackErr != nil {
+				log.Printf("%s: %s", p, debug.Stack())
+			}
 		} else {
 			err = tx.Commit() // err is nil; if Commit returns an error, update err
 			if err != nil {
