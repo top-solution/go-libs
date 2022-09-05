@@ -235,7 +235,10 @@ func TxOr(ctx context.Context, fallback boil.Executor) boil.Executor {
 }
 
 func Tx(ctx context.Context) *sql.Tx {
-	tx := ctx.Value(TxKey).(*sql.Tx)
+	tx, ok := ctx.Value(TxKey).(*sql.Tx)
+	if !ok {
+		return nil
+	}
 	return tx
 }
 
