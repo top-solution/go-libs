@@ -183,7 +183,7 @@ type BeginnerExecutor interface {
 
 // Transaction wraps a function within an SQL transaction, that can be used to run multiple statements in a safe way
 // In case of errors or panics, the transaction will be rolled back
-func Transaction(db BeginnerExecutor, ctx context.Context, txFunc func(tx *sql.Tx) error) (err error) {
+func Transaction(db BeginnerExecutor, txFunc func(tx *sql.Tx) error) (err error) {
 	return TransactionCtx(context.TODO(), db, func(ctx context.Context) error {
 		return txFunc(Tx(ctx))
 	})
