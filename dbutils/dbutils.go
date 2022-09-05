@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
-	"runtime/debug"
 	"strings"
 	"time"
 
@@ -193,13 +191,17 @@ func Transaction(db BeginnerExecutor, txFunc func(tx *sql.Tx) error) (err error)
 // or uses an existing one from the context
 func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx context.Context) error) (err error) {
 	tx := Tx(ctx)
-	if tx == nil {
-		tx, err = db.Begin()
-		if err != nil {
-			return
-		}
-		ctx = WithTx(ctx, tx)
+	if tx != nil {
+		return txFunc(ctx)
 	}
+
+	// No tx was found: start a new one and handle it
+	tx, err = db.Begin()
+	if err != nil {
+		return
+	}
+	ctx = WithTx(ctx, tx)
+
 	defer func() {
 		//nolint:gocritic
 		if p := recover(); p != nil {
@@ -207,18 +209,14 @@ func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx co
 			if rollbackErr != nil {
 				panic(p)
 			}
-			log.Printf("%s: %s", p, debug.Stack())
 			err = fmt.Errorf("transaction failed: %w", err)
 		} else if err != nil {
 			rollbackErr := tx.Rollback() // err is non-nil; don't change it
 			if rollbackErr != nil {
-				log.Printf("%s: %s", p, debug.Stack())
+				err = fmt.Errorf("rollback failed (%s): %w", rollbackErr.Error(), err)
 			}
 		} else {
 			err = tx.Commit() // err is nil; if Commit returns an error, update err
-			if err != nil {
-				log.Printf("%s: %s", p, debug.Stack())
-			}
 		}
 	}()
 	err = txFunc(ctx)
