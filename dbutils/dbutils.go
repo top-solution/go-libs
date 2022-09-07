@@ -213,7 +213,7 @@ func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx co
 			case string:
 				err = errors.New(x)
 			case error:
-				err = fmt.Errorf("transaction failed: %w", err)
+				err = fmt.Errorf("transaction failed: %w", x)
 			default:
 				err = fmt.Errorf("unknown panic: %v", x)
 			}
