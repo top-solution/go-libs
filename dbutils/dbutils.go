@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"runtime/debug"
 	"strings"
 	"time"
 
 	"github.com/pressly/goose/v3"
+	"github.com/prometheus/common/log"
 	"github.com/top-solution/go-libs/config"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -215,8 +217,9 @@ func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx co
 			case error:
 				err = fmt.Errorf("transaction failed: %w", x)
 			default:
-				err = fmt.Errorf("unknown panic: %v", x)
+				err = fmt.Errorf("transaction failed for unknown panic: %v", x)
 			}
+			log.Error("transaction failed", "err", err, "stack", string(debug.Stack()))
 		} else if err != nil {
 			rollbackErr := tx.Rollback() // err is non-nil; don't change it
 			if rollbackErr != nil {
