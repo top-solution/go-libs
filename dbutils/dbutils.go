@@ -209,7 +209,14 @@ func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx co
 			if rollbackErr != nil {
 				panic(p)
 			}
-			err = fmt.Errorf("transaction failed: %w", err)
+			switch x := p.(type) {
+			case string:
+				err = errors.New(x)
+			case error:
+				err = fmt.Errorf("transaction failed: %w", err)
+			default:
+				err = fmt.Errorf("unknown panic: %v", x)
+			}
 		} else if err != nil {
 			rollbackErr := tx.Rollback() // err is non-nil; don't change it
 			if rollbackErr != nil {
