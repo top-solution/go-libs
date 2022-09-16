@@ -1,21 +1,27 @@
 package dbutils
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
 	"runtime/debug"
 	"strings"
 	"time"
 
 	"github.com/pressly/goose/v3"
+	"github.com/prometheus/common/log"
 	"github.com/top-solution/go-libs/config"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+// TxKey holds a transaction in a ctx
+var TxKey txctx = "transaction"
+
+type txctx string
 
 // ErrEmptySort is raised when ParseSorting is called with an empty slice
 // You should either handle it or use AddSorting instead
@@ -170,31 +176,84 @@ func AddPagination(query *[]QueryMod, offset *int, limit *int) (err error) {
 	return nil
 }
 
+type BeginnerExecutor interface {
+	boil.Beginner
+	boil.Executor
+}
+
 // Transaction wraps a function within an SQL transaction, that can be used to run multiple statements in a safe way
 // In case of errors or panics, the transaction will be rolled back
-func Transaction(db boil.Beginner, txFunc func(*sql.Tx) error) (err error) {
-	tx, err := db.Begin()
+func Transaction(db BeginnerExecutor, txFunc func(tx *sql.Tx) error) (err error) {
+	return TransactionCtx(context.TODO(), db, func(ctx context.Context) error {
+		return txFunc(Tx(ctx))
+	})
+}
+
+// TransactionCtx is the same as Transaction, but either embeds the transaction in the given context
+// or uses an existing one from the context
+func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx context.Context) error) (err error) {
+	tx := Tx(ctx)
+	if tx != nil {
+		return txFunc(ctx)
+	}
+
+	// No tx was found: start a new one and handle it
+	tx, err = db.Begin()
 	if err != nil {
 		return
 	}
+	ctx = WithTx(ctx, tx)
+
 	defer func() {
 		//nolint:gocritic
 		if p := recover(); p != nil {
-			err = tx.Rollback()
-			if err != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
 				panic(p)
 			}
-			log.Printf("%s: %s", p, debug.Stack())
-			err = errors.New("transaction failed")
+			switch x := p.(type) {
+			case string:
+				err = errors.New(x)
+			case error:
+				err = fmt.Errorf("transaction failed: %w", x)
+			default:
+				err = fmt.Errorf("transaction failed for unknown panic: %v", x)
+			}
+			log.Error("transaction failed", "err", err, "stack", string(debug.Stack()))
 		} else if err != nil {
 			rollbackErr := tx.Rollback() // err is non-nil; don't change it
-			log.Println(rollbackErr)
+			if rollbackErr != nil {
+				err = fmt.Errorf("rollback failed (%s): %w", rollbackErr.Error(), err)
+			}
 		} else {
 			err = tx.Commit() // err is nil; if Commit returns an error, update err
 		}
 	}()
-	err = txFunc(tx)
+	err = txFunc(ctx)
 	return err
+}
+
+// WithTx enriches a context with a transaction
+func WithTx(ctx context.Context, tx *sql.Tx) context.Context {
+	return context.WithValue(ctx, TxKey, tx)
+}
+
+// TxOr extracts a transaction from a context, with a fallback executor
+func TxOr(ctx context.Context, fallback boil.Executor) boil.Executor {
+	tx := Tx(ctx)
+	if tx == nil {
+		return fallback
+	}
+	return tx
+}
+
+// Tx extracts a transaction from a context, returns nil if no transaxction is found
+func Tx(ctx context.Context) *sql.Tx {
+	tx, ok := ctx.Value(TxKey).(*sql.Tx)
+	if !ok {
+		return nil
+	}
+	return tx
 }
 
 // DB is a wrapper for *sql.DB, providing a few utilities to handle migrations
