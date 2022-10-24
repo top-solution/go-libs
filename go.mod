@@ -3,7 +3,7 @@ module github.com/top-solution/go-libs
 go 1.17
 
 require (
-	github.com/ardanlabs/conf/v2 v2.2.0
+	github.com/ardanlabs/conf/v3 v3.1.2
 	github.com/codeclysm/ctxlog v1.0.0
 	github.com/dimfeld/httptreemux/v5 v5.2.2
 	github.com/goccy/go-yaml v1.9.4

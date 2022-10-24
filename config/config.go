@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ardanlabs/conf/v2"
+	"github.com/ardanlabs/conf/v3"
 	"github.com/goccy/go-yaml"
 	log "github.com/inconshreveable/log15"
 	"github.com/serjlee/frequency"
