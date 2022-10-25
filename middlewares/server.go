@@ -102,7 +102,7 @@ func (s Server) AddWebappHandler(fs fs.FS, rootfile string, prefixesToExclude ..
 			ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
 			enc := goahttp.ResponseEncoder(ctx, rw)
 			rw.WriteHeader(http.StatusNotFound)
-			err := enc.Encode(goahttp.NewErrorResponse(fmt.Errorf("404 page not found")))
+			err := enc.Encode(goahttp.NewErrorResponse(ctx, fmt.Errorf("404 page not found")))
 			if err != nil {
 				return
 			}
