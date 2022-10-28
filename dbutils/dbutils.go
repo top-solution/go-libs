@@ -297,6 +297,24 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 
 	currentVersion := int64(-1)
 
+	var db *sql.DB
+
+	// Make sure the DB is actually reachable
+	for _, delay := range connectionRetries {
+		db, err = sql.Open(conf.Driver, connectionString)
+		if err == nil {
+			err = db.Ping()
+			if err == nil {
+				break
+			}
+		}
+		time.Sleep(delay * time.Second)
+	}
+	if err != nil {
+		return nil, -1, fmt.Errorf("reaching DB server: %w", err)
+	}
+
+	// DB should be ready, run migrations if needed
 	if conf.Migrations.Run {
 		// Goose wants to use the "sqlserver" driver, never "mssql"
 		driver := conf.Driver
@@ -308,6 +326,7 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 		if err != nil {
 			return nil, -1, fmt.Errorf("open db for migrations: %w", err)
 		}
+		defer db.Close()
 
 		currentVersion, err = goose.GetDBVersion(db)
 		if err != nil {
@@ -318,26 +337,6 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 		if err != nil {
 			return nil, -1, fmt.Errorf("migrate db: %w", err)
 		}
-
-		db.Close()
-	}
-
-	// sqlboiler wants to use the "mssql" driver, never "sqlserver"
-	db, err := sql.Open(conf.Driver, connectionString)
-	if err != nil {
-		return nil, -1, fmt.Errorf("open db: %w", err)
-	}
-
-	// Make sure the DB is actually reachable
-	for _, delay := range connectionRetries {
-		err = db.Ping()
-		if err == nil {
-			break
-		}
-		time.Sleep(delay * time.Second)
-	}
-	if err != nil {
-		return nil, -1, fmt.Errorf("pinging DB server: %w", err)
 	}
 
 	return &DB{DB: db, conf: conf, fsys: fsys}, currentVersion, nil
