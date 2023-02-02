@@ -15,6 +15,15 @@ import (
 
 var cleanupLogsTask *scheduler.Entry
 
+// FilterLogLevel wraps a log handler with a log level filter, given the log config
+func FilterLogLevel(logHandler log.Handler, config config.LogConfig) log.Handler {
+	lvl, _ := log.LvlFromString(config.Level)
+
+	return log.LvlFilterHandler(
+		lvl,
+		logHandler)
+}
+
 func InitFileLogger(logger log.Logger, config config.LogConfig) error {
 	if config.Path == "" {
 		config.Path = "log"
@@ -35,8 +44,8 @@ func InitFileLogger(logger log.Logger, config config.LogConfig) error {
 	}
 	logger.SetHandler(
 		log.MultiHandler(
-			logHandler,
-			log.StreamHandler(os.Stdout, log.TerminalFormat()), // add a readable one for the terminal
+			FilterLogLevel(logHandler, config),
+			FilterLogLevel(log.StreamHandler(os.Stdout, log.TerminalFormat()), config), // add a readable one for the terminal
 		))
 
 	// cleanup old logs
