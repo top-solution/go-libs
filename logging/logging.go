@@ -24,6 +24,14 @@ func FilterLogLevel(logHandler log.Handler, config config.LogConfig) log.Handler
 		logHandler)
 }
 
+// InitTerminalLogger sets up a logger (ie: log.Root()) to only print in the terminal
+func InitTerminalLogger(logger log.Logger, config config.LogConfig) {
+	logger.SetHandler(
+		FilterLogLevel(log.StreamHandler(os.Stdout, log.TerminalFormat()), config), // add a readable one for the terminal
+	)
+}
+
+// InitFileLogger sets up a logger (ie: log.Root()) to both print in the terminal and in a JSON logfile
 func InitFileLogger(logger log.Logger, config config.LogConfig) error {
 	if config.Path == "" {
 		config.Path = "log"
