@@ -25,10 +25,11 @@ type MetaCondition func(meta *meta.Meta) bool
 
 var NeverCondition = func(meta *meta.Meta) bool { return false }
 var AlwaysCondition = func(meta *meta.Meta) bool { return true }
+var APIEndpointCondition = func(meta *meta.Meta) bool { return meta.Method != "" }
 
 var ShouldLogPayloads = true
 
-func DefaultMiddlewares(handler http.Handler, server Server) http.Handler {
+func DefaultMiddlewares(handler http.Handler, server Server, cacheCondition MetaCondition) http.Handler {
 	// Remember that they have to be in reverse order
 	// Recover ensure that requests cannot panic
 	handler = Recover(server.Enc)(handler)
@@ -49,7 +50,7 @@ func DefaultMiddlewares(handler http.Handler, server Server) http.Handler {
 	handler = Vary()(handler)
 
 	// NoCache adds the Cache-Control headers
-	handler = NoCache(AlwaysCondition)(handler)
+	handler = NoCache(cacheCondition)(handler)
 
 	// RequestMeta adds a shared meta struct in the chain of middlewares
 	handler = meta.RequestMeta()(handler)
