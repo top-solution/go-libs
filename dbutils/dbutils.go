@@ -16,6 +16,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 )
 
 // TxKey holds a transaction in a ctx
@@ -28,6 +29,8 @@ type txctx string
 var ErrEmptySort = errors.New("at least a sort parameter is required")
 
 var connectionRetries = []time.Duration{1, 1, 2, 2, 3, 5, 8}
+
+var unaryOps = []string{"isNull", "isNotNull", "isEmpty", "isNotEmpty"}
 
 // QueryMods is an helper that allows treating arrays of QueryMod as a single QueryMod
 type QueryMods []QueryMod
@@ -75,20 +78,42 @@ func (f FilterMap) AddSorting(query *[]QueryMod, sort []string) (err error) {
 }
 
 // WhereFilters map user-given operators to Where operators
-var WhereFilters = map[string]string{
-	"eq":        " = ?",
-	"neq":       " != ?",
-	"like":      " LIKE ? ESCAPE '_'",
-	"notlike":   " NOT LIKE ? ESCAPE '_'",
-	"lt":        " < ?",
-	"lte":       " <= ?",
-	"gt":        " > ?",
-	"gte":       " >= ?",
-	"isNull":    " IS NULL",
-	"isNotNull": " IS NOT NULL",
-	"in":        " IN ?",
-	"notIn":     " NOT IN ?",
+var MSSQLWhereFilters = map[string]string{
+	"eq":         "{} = ?",
+	"neq":        "{} != ?",
+	"like":       "{} LIKE ? ESCAPE '_'",
+	"notlike":    "{} NOT LIKE ? ESCAPE '_'",
+	"lt":         "{} < ?",
+	"lte":        "{} <= ?",
+	"gt":         "{} > ?",
+	"gte":        "{} >= ?",
+	"isNull":     "{} IS NULL",
+	"isNotNull":  "{} IS NOT NULL",
+	"in":         "{} IN ?",
+	"notIn":      "{} NOT IN ?",
+	"isEmpty":    "coalesce({},'') = ''",
+	"isNotEmpty": "coalesce({},'') != ''",
 }
+
+// WhereFilters map user-given operators to Where operators
+var PostgresWhereFilters = map[string]string{
+	"eq":         "{} = ?",
+	"neq":        "{} != ?",
+	"like":       "{} ILIKE ? ESCAPE '_'",
+	"notlike":    "{} NOT ILIKE ? ESCAPE '_'",
+	"lt":         "{} < ?",
+	"lte":        "{} <= ?",
+	"gt":         "{} > ?",
+	"gte":        "{} >= ?",
+	"isNull":     "{} IS NULL",
+	"isNotNull":  "{} IS NOT NULL",
+	"in":         "{} IN ?",
+	"notIn":      "{} NOT IN ?",
+	"isEmpty":    "coalesce({},'') = ''",
+	"isNotEmpty": "coalesce({},'') != ''",
+}
+
+var WhereFilters = PostgresWhereFilters
 
 // ParseFilters generates an sqlboiler's QueryMod starting from an user-inputted attribute, user-inputted data, and an attribute->column map
 // It also returns the parsed operator and value
@@ -106,7 +131,7 @@ func (f FilterMap) ParseFilters(attribute string, filters ...string) (QueryMod, 
 		op := spl[0]
 		rawValue := ""
 		if len(spl) < 2 {
-			if op != "isNull" && op != "isNotNull" {
+			if !slices.Contains(unaryOps, op) {
 				return nil, nil, nil, fmt.Errorf("operation %s is not valid", op)
 			}
 		} else {
@@ -127,8 +152,8 @@ func (f FilterMap) ParseFilters(attribute string, filters ...string) (QueryMod, 
 }
 
 func (f FilterMap) parseFilter(attribute string, op string, rawValue string) (QueryMod, interface{}, error) {
-	if op == "isNull" || op == "isNotNull" {
-		return Where(f[attribute] + WhereFilters[op]), nil, nil
+	if slices.Contains(unaryOps, op) {
+		return Where(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])), nil, nil
 	}
 	if op == "in" || op == "notIn" {
 		var value []interface{}
@@ -137,11 +162,11 @@ func (f FilterMap) parseFilter(attribute string, op string, rawValue string) (Qu
 			value = append(value, v)
 		}
 		if op == "in" {
-			return WhereIn(f[attribute]+WhereFilters[op], value...), value, nil
+			return WhereIn(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), value...), value, nil
 		}
-		return WhereNotIn(f[attribute]+WhereFilters[op], value...), value, nil
+		return WhereNotIn(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), value...), value, nil
 	}
-	return Where(f[attribute]+WhereFilters[op], rawValue), rawValue, nil
+	return Where(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), rawValue), rawValue, nil
 }
 
 // AddFilters adds the parsed filters to the query
@@ -282,9 +307,13 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 			connectionString = fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s",
 				conf.User, conf.Password, conf.Server, conf.Port, conf.DB)
 		}
+		// FIXME: this means we can't have both a mssql and a postgres connections active at the same time
+		WhereFilters = MSSQLWhereFilters
 	case "postgres":
 		connectionString = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 			conf.Server, conf.Port, conf.User, conf.Password, conf.DB)
+		// FIXME: this means we can't have both a mssql and a postgres connections active at the same time
+		WhereFilters = PostgresWhereFilters
 	}
 
 	// Init Goose
