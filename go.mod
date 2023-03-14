@@ -1,8 +1,9 @@
 module github.com/top-solution/go-libs
 
-go 1.17
+go 1.18
 
 require (
+	github.com/NYTimes/gziphandler v1.1.1
 	github.com/ardanlabs/conf/v3 v3.1.2
 	github.com/codeclysm/ctxlog v1.0.0
 	github.com/dimfeld/httptreemux/v5 v5.4.0
@@ -19,6 +20,7 @@ require (
 	github.com/volatiletech/sqlboiler/v4 v4.13.0
 	goa.design/goa/v3 v3.10.1
 	goa.design/plugins v2.2.6+incompatible
+	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0
 )
 
 require (
@@ -29,6 +31,7 @@ require (
 	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/friendsofgo/errors v0.9.2 // indirect
+	github.com/go-openapi/loads v0.21.2 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -52,6 +55,7 @@ require (
 	golang.org/x/tools v0.2.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
+	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
