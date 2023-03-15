@@ -13,6 +13,7 @@ import (
 
 	log "github.com/inconshreveable/log15"
 	fslib "github.com/top-solution/go-libs/fs"
+	"github.com/top-solution/go-libs/middlewares/codec"
 	"github.com/top-solution/go-libs/middlewares/meta"
 	goahttp "goa.design/goa/v3/http"
 	goa "goa.design/goa/v3/pkg"
@@ -28,7 +29,7 @@ type Server struct {
 
 func New(entry log.Logger) Server {
 	dec := goahttp.RequestDecoder
-	enc := goahttp.ResponseEncoder
+	enc := codec.ResponseEncoder // use custom encoder handling CSV
 
 	mux := NewMuxer()
 	mux.Handle("GET", "/alive", Alive())
