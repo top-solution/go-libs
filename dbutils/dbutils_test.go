@@ -1,6 +1,7 @@
 package dbutils
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -90,6 +91,30 @@ func TestAddFilters(t *testing.T) {
 			expectedVals: []interface{}(nil),
 		},
 		{
+			name: "isEmpty",
+			mods: []qm.QueryMod{qm.Select("id", "name"), qm.From("tables")},
+			filters: []filter{
+				{
+					attr: "id",
+					raw:  []string{"isEmpty"},
+				},
+			},
+			expectedSQL:  "SELECT [id], [name] FROM [tables] WHERE (coalesce(id,'') = '');",
+			expectedVals: []interface{}(nil),
+		},
+		{
+			name: "isNotEmpty",
+			mods: []qm.QueryMod{qm.Select("id", "name"), qm.From("tables")},
+			filters: []filter{
+				{
+					attr: "id",
+					raw:  []string{"isNotEmpty"},
+				},
+			},
+			expectedSQL:  "SELECT [id], [name] FROM [tables] WHERE (coalesce(id,'') != '');",
+			expectedVals: []interface{}(nil),
+		},
+		{
 			name: "multipleFilterSameAttr",
 			mods: []qm.QueryMod{qm.Select("id", "name"), qm.From("tables")},
 			filters: []filter{
@@ -121,7 +146,7 @@ func TestAddFilters(t *testing.T) {
 
 	// test simple ops
 	for f, v := range WhereFilters {
-		if f == "isNull" || f == "isNotNull" || f == "in" || f == "notIn" {
+		if f == "isNull" || f == "isNotNull" || f == "in" || f == "notIn" || f == "isEmpty" || f == "isNotEmpty" {
 			continue
 		}
 
@@ -141,7 +166,7 @@ func TestAddFilters(t *testing.T) {
 					raw:  []string{f + ":ciao"},
 				},
 			},
-			expectedSQL:  "SELECT [id], [name] FROM [tables] WHERE (id" + v + ");",
+			expectedSQL:  "SELECT [id], [name] FROM [tables] WHERE (" + strings.ReplaceAll(v, "{}", "id") + ");",
 			expectedVals: []interface{}{"ciao"},
 		})
 	}
