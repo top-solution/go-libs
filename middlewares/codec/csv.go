@@ -6,10 +6,12 @@ import (
 	"reflect"
 )
 
+// CSVEncoder is a custom goahttp.Encoder. See docs for ResponseEncoder.
 type CSVEncoder struct {
 	enc *csv.Writer
 }
 
+// Encode implements the goahttp.Encoder interface
 func (e *CSVEncoder) Encode(v interface{}) error {
 	switch reflect.TypeOf(v).Kind() {
 	case reflect.Interface, reflect.Ptr:
@@ -29,6 +31,7 @@ func (e *CSVEncoder) Encode(v interface{}) error {
 	}
 }
 
+// Convert an interface{} containing a map into [][]string.
 func recordizeMap(input interface{}) [][]string {
 	object := reflect.ValueOf(input)
 	values := object.MapRange()
@@ -59,10 +62,22 @@ func recordizeSlice(input interface{}) [][]string {
 
 	typ := first.Type()
 
-	for i := 0; i < first.NumField(); i++ {
-		header = append(header, typ.Field(i).Name)
+	for i := 0; i < typ.NumField(); i++ {
+		f := typ.Field(i).Type
+		if f.Kind() == reflect.Ptr {
+			f = f.Elem()
+		}
+		// The field is a nested struct: add header elements for its fields, too
+		if f.Kind() == reflect.Struct {
+			for j := 0; j < f.NumField(); j++ {
+				header = append(header, typ.Field(i).Name+" "+f.Field(j).Name)
+			}
+		} else {
+			header = append(header, typ.Field(i).Name)
+		}
 	}
 
+	// append header to final CSV
 	records = append(records, header)
 
 	// Make a slice of objects to iterate through & populate the string slice
@@ -76,12 +91,33 @@ func recordizeSlice(input interface{}) [][]string {
 		item := reflect.ValueOf(v)
 		var record []string
 		for i := 0; i < item.NumField(); i++ {
-			var itm interface{} = ""
+			// Fetch underlying value
 			val := reflect.Indirect(item.Field(i))
-			if val != (reflect.Value{}) {
-				itm = val.Interface()
+			// Fetch underlying type
+			f := typ.Field(i).Type
+			if f.Kind() == reflect.Ptr {
+				f = f.Elem()
 			}
-			record = append(record, fmt.Sprintf("%v", itm))
+
+			// If it's a nested struct, read fields
+			if f.Kind() == reflect.Struct {
+				for j := 0; j < f.NumField(); j++ {
+					var itm interface{} = ""
+					if val != (reflect.Value{}) {
+						fieldVal := reflect.Indirect(val.Field(j))
+						if fieldVal != (reflect.Value{}) {
+							itm = fieldVal.Interface()
+						}
+					}
+					record = append(record, fmt.Sprintf("%+v", itm))
+				}
+			} else { // Otherwise just read the value
+				var itm interface{} = ""
+				if val != (reflect.Value{}) {
+					itm = val.Interface()
+				}
+				record = append(record, fmt.Sprintf("%+v", itm))
+			}
 		}
 		records = append(records, record)
 	}
