@@ -3,7 +3,6 @@ module github.com/top-solution/go-libs
 go 1.18
 
 require (
-	github.com/NYTimes/gziphandler v1.1.1
 	github.com/ardanlabs/conf/v3 v3.1.2
 	github.com/codeclysm/ctxlog v1.0.0
 	github.com/dimfeld/httptreemux/v5 v5.4.0
@@ -37,6 +36,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/lib/pq v1.10.6
 	github.com/manveru/faker v0.0.0-20171103152722-9fbc68a78c4d // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect

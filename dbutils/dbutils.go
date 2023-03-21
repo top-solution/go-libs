@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 	"github.com/prometheus/common/log"
 	"github.com/top-solution/go-libs/config"
@@ -176,9 +177,9 @@ func (f FilterMap) parseFilter(attribute string, op string, rawValue string, hav
 			value = append(value, v)
 		}
 		if CurrentDriver == PostgresDriver {
-			return queryMod(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), value), value, nil
+			return queryMod(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), pq.Array(value)), value, nil
 		}
-		// FIXME: no support of non-postgres In/NotIn for MSSQL
+		// FIXME: no support of non-postgres In/NotIn Having for MSSQL
 		if op == "in" {
 			return WhereIn(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), value...), value, nil
 		}
