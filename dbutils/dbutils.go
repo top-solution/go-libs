@@ -118,8 +118,8 @@ var PostgresWhereFilters = map[string]string{
 	"gte":        "{} >= ?",
 	"isNull":     "{} IS NULL",
 	"isNotNull":  "{} IS NOT NULL",
-	"in":         "{} IN ?",
-	"notIn":      "{} NOT IN ?",
+	"in":         "{} = ANY(?)",
+	"notIn":      "{} != ALL(?)",
 	"isEmpty":    "coalesce({},'') = ''",
 	"isNotEmpty": "coalesce({},'') != ''",
 }
