@@ -15,6 +15,7 @@ import (
 	"github.com/top-solution/go-libs/config"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 )
@@ -77,6 +78,15 @@ func (f FilterMap) AddSorting(query *[]QueryMod, sort []string) (err error) {
 	return nil
 }
 
+type DriverType string
+
+const (
+	MSSQLDriver    DriverType = "mssql"
+	PostgresDriver DriverType = "postgres"
+)
+
+var CurrentDriver = PostgresDriver
+
 // WhereFilters map user-given operators to Where operators
 var MSSQLWhereFilters = map[string]string{
 	"eq":         "{} = ?",
@@ -117,7 +127,7 @@ var WhereFilters = PostgresWhereFilters
 
 // ParseFilters generates an sqlboiler's QueryMod starting from an user-inputted attribute, user-inputted data, and an attribute->column map
 // It also returns the parsed operator and value
-func (f FilterMap) ParseFilters(attribute string, filters ...string) (QueryMod, []string, []interface{}, error) {
+func (f FilterMap) ParseFilters(attribute string, having bool, filters ...string) (QueryMod, []string, []interface{}, error) {
 	var qmods QueryMods
 	var ops []string
 	var vals []interface{}
@@ -140,7 +150,7 @@ func (f FilterMap) ParseFilters(attribute string, filters ...string) (QueryMod, 
 		if _, ok := WhereFilters[op]; !ok {
 			return nil, nil, nil, fmt.Errorf("operation %s is not implemented", op)
 		}
-		qmod, val, err := f.parseFilter(attribute, op, rawValue)
+		qmod, val, err := f.parseFilter(attribute, op, rawValue, having)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -151,9 +161,13 @@ func (f FilterMap) ParseFilters(attribute string, filters ...string) (QueryMod, 
 	return qmods, ops, vals, nil
 }
 
-func (f FilterMap) parseFilter(attribute string, op string, rawValue string) (QueryMod, interface{}, error) {
+func (f FilterMap) parseFilter(attribute string, op string, rawValue string, having bool) (QueryMod, interface{}, error) {
+	queryMod := qm.Where
+	if having {
+		queryMod = qm.Having
+	}
 	if slices.Contains(unaryOps, op) {
-		return Where(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])), nil, nil
+		return queryMod(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])), nil, nil
 	}
 	if op == "in" || op == "notIn" {
 		var value []interface{}
@@ -161,17 +175,31 @@ func (f FilterMap) parseFilter(attribute string, op string, rawValue string) (Qu
 		for _, v := range stringValue {
 			value = append(value, v)
 		}
+		if CurrentDriver == PostgresDriver {
+			return queryMod(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), value), value, nil
+		}
+		// FIXME: no support of non-postgres In/NotIn for MSSQL
 		if op == "in" {
 			return WhereIn(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), value...), value, nil
 		}
 		return WhereNotIn(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), value...), value, nil
 	}
-	return Where(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), rawValue), rawValue, nil
+	return queryMod(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), rawValue), rawValue, nil
 }
 
-// AddFilters adds the parsed filters to the query
+// AddFilters adds the parsed filters to the query with a Where querymod
 func (f FilterMap) AddFilters(query *[]QueryMod, attribute string, data ...string) (err error) {
-	mod, _, _, err := f.ParseFilters(attribute, data...)
+	mod, _, _, err := f.ParseFilters(attribute, false, data...)
+	if err != nil {
+		return err
+	}
+	*query = append(*query, mod)
+	return nil
+}
+
+// AddHavingFilters adds the parsed filters to the query with a Having QueryMod
+func (f FilterMap) AddHavingFilters(query *[]QueryMod, attribute string, data ...string) (err error) {
+	mod, _, _, err := f.ParseFilters(attribute, true, data...)
 	if err != nil {
 		return err
 	}
@@ -309,11 +337,13 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 		}
 		// FIXME: this means we can't have both a mssql and a postgres connections active at the same time
 		WhereFilters = MSSQLWhereFilters
+		CurrentDriver = MSSQLDriver
 	case "postgres":
 		connectionString = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 			conf.Server, conf.Port, conf.User, conf.Password, conf.DB)
 		// FIXME: this means we can't have both a mssql and a postgres connections active at the same time
 		WhereFilters = PostgresWhereFilters
+		CurrentDriver = PostgresDriver
 	}
 
 	// Init Goose
