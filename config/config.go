@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/ardanlabs/conf/v3"
@@ -21,6 +22,8 @@ var baseFlags = struct {
 	Build string `yaml:"-"`
 	// The description of the app version. It's used by ardanlabs/conf
 	Desc string `yaml:"-"`
+	// The leftovers args. It's used by ardanlabs/conf
+	Args conf.Args
 }{}
 
 type yamlConfParser struct {
@@ -75,8 +78,21 @@ func ParseConfigAndVersion(cfg interface{}) error {
 		}
 		return fmt.Errorf("parsing config: %w", err)
 	}
+
 	// Parse config file
-	return ParseConfigWithPrefix(cfg, baseFlags.ConfigFile, "")
+	err = ParseConfigWithPrefix(cfg, baseFlags.ConfigFile, "")
+	if err != nil {
+		return err
+	}
+
+	// Workaround for ardanlabs/conf ignoring leftovers after the double parse
+	s := reflect.ValueOf(cfg).Elem()
+	argsV := s.FieldByName("Args")
+	if argsV.IsZero() {
+		return nil
+	}
+	argsV.Set(reflect.ValueOf(baseFlags.Args))
+	return nil
 }
 
 // ParseConfig parses a file config, given the file path, expecting the prefix
