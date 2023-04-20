@@ -13,7 +13,7 @@ require (
 	github.com/ory/ladon v1.2.0
 	github.com/pressly/goose/v3 v3.7.0
 	github.com/prometheus/common v0.4.0
-	github.com/serjlee/frequency v1.0.0
+	github.com/serjlee/frequency v1.1.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
 	github.com/volatiletech/sqlboiler/v4 v4.13.0
