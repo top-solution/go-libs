@@ -2,6 +2,8 @@ module github.com/top-solution/go-libs
 
 go 1.18
 
+replace github.com/ardanlabs/conf/v3 v3.1.2 => github.com/serjlee/conf/v3 v3.0.0-20230616092021-aca630f7b410
+
 require (
 	github.com/ardanlabs/conf/v3 v3.1.2
 	github.com/codeclysm/ctxlog v1.0.0
