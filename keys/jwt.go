@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/codeclysm/ctxlog"
 	jwt "github.com/golang-jwt/jwt/v4"
+	"github.com/top-solution/go-libs/ctxlog"
 )
 
 type Claims struct {

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/codeclysm/ctxlog"
 	"github.com/sirupsen/logrus"
+	"github.com/top-solution/go-libs/ctxlog"
 
 	log "github.com/inconshreveable/log15"
 	"github.com/top-solution/go-libs/middlewares/appID"

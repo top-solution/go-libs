@@ -3,8 +3,8 @@ package middlewares
 import (
 	"context"
 
-	"github.com/codeclysm/ctxlog"
 	"github.com/sirupsen/logrus"
+	"github.com/top-solution/go-libs/ctxlog"
 
 	"github.com/top-solution/go-libs/middlewares/meta"
 	goa "goa.design/goa/v3/pkg"

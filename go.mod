@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/ardanlabs/conf/v3 v3.1.6
-	github.com/codeclysm/ctxlog v1.0.0
 	github.com/dimfeld/httptreemux/v5 v5.4.0
 	github.com/goccy/go-yaml v1.9.5
 	github.com/golang-jwt/jwt/v4 v4.4.2
