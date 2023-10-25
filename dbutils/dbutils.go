@@ -32,7 +32,8 @@ var ErrEmptySort = errors.New("at least a sort parameter is required")
 
 var connectionRetries = []time.Duration{1, 1, 2, 2, 3, 5, 8}
 
-var unaryOps = []string{"isNull", "isNotNull", "isEmpty", "isNotEmpty"}
+// UnaryOps is a list of operators which don't require values
+var UnaryOps = []string{"isNull", "isNotNull", "isEmpty", "isNotEmpty"}
 
 // QueryMods is an helper that allows treating arrays of QueryMod as a single QueryMod
 type QueryMods []QueryMod
@@ -143,7 +144,7 @@ func (f FilterMap) ParseFilters(attribute string, having bool, filters ...string
 		op := spl[0]
 		rawValue := ""
 		if len(spl) < 2 {
-			if !slices.Contains(unaryOps, op) {
+			if !IsUnaryOp(op) {
 				return nil, nil, nil, nil, fmt.Errorf("operation %s is not valid", op)
 			}
 		} else {
@@ -169,7 +170,7 @@ func (f FilterMap) parseFilter(attribute string, op string, rawValue string, hav
 	if having {
 		queryMod = qm.Having
 	}
-	if slices.Contains(unaryOps, op) {
+	if IsUnaryOp(op) {
 		q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
 		return queryMod(q), q, nil, nil
 	}
@@ -429,4 +430,9 @@ func (d *DB) Version() (int64, error) {
 		return -1, errors.New("can't get current version: no file system was passed to Open()")
 	}
 	return goose.GetDBVersion(d.DB)
+}
+
+// IsUnaryOp returns true if the operator is unary (no value required)
+func IsUnaryOp(op string) bool {
+	return slices.Contains(UnaryOps, op)
 }
