@@ -128,13 +128,14 @@ var WhereFilters = PostgresWhereFilters
 
 // ParseFilters generates an sqlboiler's QueryMod starting from an user-inputted attribute, user-inputted data, and an attribute->column map
 // It also returns the parsed operator and value
-func (f FilterMap) ParseFilters(attribute string, having bool, filters ...string) (QueryMod, []string, []interface{}, error) {
+func (f FilterMap) ParseFilters(attribute string, having bool, filters ...string) (QueryMod, []string, []string, []interface{}, error) {
 	var qmods QueryMods
+	var rawQueries []string
 	var ops []string
 	var vals []interface{}
 
 	if _, ok := f[attribute]; !ok {
-		return nil, nil, nil, fmt.Errorf("attribute %s not found", attribute)
+		return nil, nil, nil, nil, fmt.Errorf("attribute %s not found", attribute)
 	}
 
 	for _, filter := range filters {
@@ -143,32 +144,34 @@ func (f FilterMap) ParseFilters(attribute string, having bool, filters ...string
 		rawValue := ""
 		if len(spl) < 2 {
 			if !slices.Contains(unaryOps, op) {
-				return nil, nil, nil, fmt.Errorf("operation %s is not valid", op)
+				return nil, nil, nil, nil, fmt.Errorf("operation %s is not valid", op)
 			}
 		} else {
 			rawValue = spl[1]
 		}
 		if _, ok := WhereFilters[op]; !ok {
-			return nil, nil, nil, fmt.Errorf("operation %s is not implemented", op)
+			return nil, nil, nil, nil, fmt.Errorf("operation %s is not implemented", op)
 		}
-		qmod, val, err := f.parseFilter(attribute, op, rawValue, having)
+		qmod, raw, val, err := f.parseFilter(attribute, op, rawValue, having)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		ops = append(ops, op)
+		rawQueries = append(rawQueries, raw)
 		qmods = append(qmods, qmod)
 		vals = append(vals, val)
 	}
-	return qmods, ops, vals, nil
+	return qmods, rawQueries, ops, vals, nil
 }
 
-func (f FilterMap) parseFilter(attribute string, op string, rawValue string, having bool) (QueryMod, interface{}, error) {
+func (f FilterMap) parseFilter(attribute string, op string, rawValue string, having bool) (QueryMod, string, interface{}, error) {
 	queryMod := qm.Where
 	if having {
 		queryMod = qm.Having
 	}
 	if slices.Contains(unaryOps, op) {
-		return queryMod(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])), nil, nil
+		q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
+		return queryMod(q), q, nil, nil
 	}
 	if op == "in" || op == "notIn" {
 		var value []interface{}
@@ -177,20 +180,24 @@ func (f FilterMap) parseFilter(attribute string, op string, rawValue string, hav
 			value = append(value, v)
 		}
 		if CurrentDriver == PostgresDriver {
-			return queryMod(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), pq.Array(value)), value, nil
+			q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
+			return queryMod(q, pq.Array(value)), q, value, nil
 		}
 		// FIXME: no support of non-postgres In/NotIn Having for MSSQL
 		if op == "in" {
-			return WhereIn(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), value...), value, nil
+			q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
+			return WhereIn(q, value...), q, value, nil
 		}
-		return WhereNotIn(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), value...), value, nil
+		q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
+		return WhereNotIn(q, value...), q, value, nil
 	}
-	return queryMod(strings.ReplaceAll(WhereFilters[op], "{}", f[attribute]), rawValue), rawValue, nil
+	q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
+	return queryMod(q, rawValue), q, rawValue, nil
 }
 
 // AddFilters adds the parsed filters to the query with a Where querymod
 func (f FilterMap) AddFilters(query *[]QueryMod, attribute string, data ...string) (err error) {
-	mod, _, _, err := f.ParseFilters(attribute, false, data...)
+	mod, _, _, _, err := f.ParseFilters(attribute, false, data...)
 	if err != nil {
 		return err
 	}
@@ -200,7 +207,7 @@ func (f FilterMap) AddFilters(query *[]QueryMod, attribute string, data ...strin
 
 // AddHavingFilters adds the parsed filters to the query with a Having QueryMod
 func (f FilterMap) AddHavingFilters(query *[]QueryMod, attribute string, data ...string) (err error) {
-	mod, _, _, err := f.ParseFilters(attribute, true, data...)
+	mod, _, _, _, err := f.ParseFilters(attribute, true, data...)
 	if err != nil {
 		return err
 	}
