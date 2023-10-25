@@ -182,7 +182,7 @@ func (f FilterMap) parseFilter(attribute string, op string, rawValue string, hav
 		}
 		if CurrentDriver == PostgresDriver {
 			q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
-			return queryMod(q, pq.Array(value)), q, value, nil
+			return queryMod(q, pq.Array(value)), q, pq.Array(value), nil
 		}
 		// FIXME: no support of non-postgres In/NotIn Having for MSSQL
 		if op == "in" {
