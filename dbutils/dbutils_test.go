@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/volatiletech/sqlboiler/v4/drivers"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -12,6 +13,7 @@ import (
 
 func NewQuery(mods ...qm.QueryMod) *queries.Query {
 	q := &queries.Query{}
+	// TODO: test MSSQL
 	queries.SetDialect(q, &drivers.Dialect{
 		LQ: 0x5b,
 		RQ: 0x5d,
@@ -39,7 +41,7 @@ func TestAddFilters(t *testing.T) {
 		mods         []qm.QueryMod
 		filters      []filter
 		expectedSQL  string
-		expectedVals []interface{}
+		expectedVals interface{}
 		expectedErr  bool
 	}{
 		{
@@ -51,8 +53,8 @@ func TestAddFilters(t *testing.T) {
 					raw:  []string{"in:ciao,come,va"},
 				},
 			},
-			expectedSQL:  "SELECT [id], [name] FROM [tables] WHERE ([id] IN (?,?,?));",
-			expectedVals: []interface{}{"ciao", "come", "va"},
+			expectedSQL:  "SELECT [id], [name] FROM [tables] WHERE (id = ANY(?));",
+			expectedVals: []any{pq.GenericArray{A: []any{"ciao", "come", "va"}}},
 		},
 		{
 			name: "notIn",
@@ -63,8 +65,8 @@ func TestAddFilters(t *testing.T) {
 					raw:  []string{"notIn:ciao,come,va"},
 				},
 			},
-			expectedSQL:  "SELECT [id], [name] FROM [tables] WHERE ([id] NOT IN (?,?,?));",
-			expectedVals: []interface{}{"ciao", "come", "va"},
+			expectedSQL:  "SELECT [id], [name] FROM [tables] WHERE (id != ALL(?));",
+			expectedVals: []any{pq.GenericArray{A: []any{"ciao", "come", "va"}}},
 		},
 		{
 			name: "isNull",
@@ -155,7 +157,7 @@ func TestAddFilters(t *testing.T) {
 			mods         []qm.QueryMod
 			filters      []filter
 			expectedSQL  string
-			expectedVals []interface{}
+			expectedVals interface{}
 			expectedErr  bool
 		}{
 			name: f,
@@ -193,6 +195,73 @@ func TestAddFilters(t *testing.T) {
 
 			assert.Equal(t, tc.expectedSQL, sql)
 			assert.EqualValues(t, tc.expectedVals, vals)
+		})
+	}
+}
+
+// TODO: test more operators, test QueryMods
+func TestParseFilters(t *testing.T) {
+	var filterMap = FilterMap{
+		"id":               "id",
+		"createDatetime":   "create_datetime",
+		"customerSupplier": "customer_supplier",
+	}
+
+	tcs := []struct {
+		name         string
+		having       bool
+		filters      []filter
+		expectedRaws []string
+		expectedOps  []string
+		expectedVals interface{}
+		expectedErr  bool
+	}{
+		{
+			name:   "in",
+			having: false,
+			filters: []filter{
+				{
+					attr: "id",
+					raw:  []string{"in:ciao,come,va"},
+				},
+			},
+			expectedRaws: []string{"id = ANY(?)"},
+			expectedOps:  []string{"in"},
+			expectedVals: []any{[]any{"ciao", "come", "va"}},
+		},
+		{
+			name:   "notIn",
+			having: false,
+			filters: []filter{
+				{
+					attr: "id",
+					raw:  []string{"notIn:ciao,come,va"},
+				},
+			},
+			expectedRaws: []string{"id != ALL(?)"},
+			expectedOps:  []string{"notIn"},
+			expectedVals: []any{[]any{"ciao", "come", "va"}},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, f := range tc.filters {
+				_, raws, ops, vals, err := filterMap.ParseFilters(f.attr, tc.having, f.raw...)
+				if err != nil {
+					break
+				}
+				if tc.expectedErr {
+					assert.NotNil(t, err)
+					return
+				} else {
+					assert.Equal(t, nil, err)
+				}
+
+				assert.EqualValues(t, tc.expectedOps, ops)
+				assert.EqualValues(t, tc.expectedRaws, raws)
+				assert.EqualValues(t, tc.expectedVals, vals)
+			}
 		})
 	}
 }
