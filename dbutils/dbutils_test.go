@@ -227,7 +227,7 @@ func TestParseFilters(t *testing.T) {
 			},
 			expectedRaws: []string{"id = ANY(?)"},
 			expectedOps:  []string{"in"},
-			expectedVals: []any{[]any{"ciao", "come", "va"}},
+			expectedVals: []any{pq.GenericArray{A: []any{"ciao", "come", "va"}}},
 		},
 		{
 			name:   "notIn",
@@ -240,7 +240,7 @@ func TestParseFilters(t *testing.T) {
 			},
 			expectedRaws: []string{"id != ALL(?)"},
 			expectedOps:  []string{"notIn"},
-			expectedVals: []any{[]any{"ciao", "come", "va"}},
+			expectedVals: []any{pq.GenericArray{A: []any{"ciao", "come", "va"}}},
 		},
 	}
 
