@@ -227,7 +227,7 @@ func TestParseFilters(t *testing.T) {
 			},
 			expectedRaws: []string{"id = ANY(?)"},
 			expectedOps:  []string{"in"},
-			expectedVals: []any{[]any{"ciao", "come", "va"}},
+			expectedVals: []any{pq.GenericArray{A: []any{"ciao", "come", "va"}}},
 		},
 		{
 			name:   "notIn",
@@ -240,7 +240,99 @@ func TestParseFilters(t *testing.T) {
 			},
 			expectedRaws: []string{"id != ALL(?)"},
 			expectedOps:  []string{"notIn"},
-			expectedVals: []any{[]any{"ciao", "come", "va"}},
+			expectedVals: []any{pq.GenericArray{A: []any{"ciao", "come", "va"}}},
+		},
+		{
+			name:   "isNull",
+			having: false,
+			filters: []filter{
+				{
+					attr: "id",
+					raw:  []string{"isNull"},
+				},
+			},
+			expectedRaws: []string{"id IS NULL"},
+			expectedOps:  []string{"isNull"},
+			expectedVals: []interface{}([]interface{}{interface{}(nil)}),
+		},
+		{
+			name:   "isNotNull",
+			having: false,
+			filters: []filter{{
+				attr: "id",
+				raw:  []string{"isNotNull"},
+			},
+			},
+			expectedRaws: []string{"id IS NOT NULL"},
+			expectedOps:  []string{"isNotNull"},
+			expectedVals: []interface{}{interface{}(nil)},
+		},
+		{
+			name:   "isEmpty",
+			having: false,
+			filters: []filter{
+				{
+					attr: "id",
+					raw:  []string{"isEmpty"},
+				},
+			},
+			expectedRaws: []string{"coalesce(id,'') = ''"},
+			expectedOps:  []string{"isEmpty"},
+			expectedVals: []interface{}{interface{}(nil)},
+		},
+		{
+			name:   "isNotEmpty",
+			having: false,
+			filters: []filter{
+				{
+					attr: "id",
+					raw:  []string{"isNotEmpty"},
+				},
+			},
+			expectedRaws: []string{"coalesce(id,'') != ''"},
+			expectedOps:  []string{"isNotEmpty"},
+			expectedVals: []interface{}{interface{}(nil)},
+		},
+
+		{
+			name:   "multipleFilterSameAttr",
+			having: false,
+			filters: []filter{
+				{
+					attr: "id",
+					raw:  []string{"gt:a", "lt:b"},
+				},
+			},
+			expectedRaws: []string{"id > ?", "id < ?"},
+			expectedOps:  []string{"gt", "lt"},
+			expectedVals: []interface{}{"a", "b"},
+		},
+
+		{
+			name:   "multipleFilters",
+			having: false,
+			filters: []filter{
+				{
+					attr: "id",
+					raw:  []string{"gt:a", "lt:b"},
+				},
+			},
+			expectedRaws: []string{"id > ?", "id < ?"},
+			expectedOps:  []string{"gt", "lt"},
+			expectedVals: []interface{}{"a", "b"},
+		},
+		{
+			name:   "multipleFilters",
+			having: false,
+			filters: []filter{
+				{
+					attr: "createDatetime",
+					raw:  []string{"gt:2022-04-01", "lt:2023-04-01"},
+				},
+			},
+			expectedRaws: []string{"create_datetime > ?", "create_datetime < ?"},
+			expectedOps:  []string{"gt", "lt"},
+			expectedVals: []interface{}{"2022-04-01", "2023-04-01"},
 		},
 	}
 
