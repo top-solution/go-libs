@@ -16,13 +16,14 @@ import (
 
 type Claims struct {
 	jwt.StandardClaims
-	Role      []string               `json:"roles,omitempty"`
-	Username  string                 `json:"username,omitempty"`
-	Firstname string                 `json:"firstname,omitempty"`
-	Lastname  string                 `json:"lastname,omitempty"`
-	AppID     string                 `json:"appID,omitempty"`
-	Extra     map[string]interface{} `json:"extra,omitempty"`
-	Email     string                 `json:"email,omitempty"`
+	Role       []string               `json:"roles,omitempty"`
+	Username   string                 `json:"username,omitempty"`
+	Firstname  string                 `json:"firstname,omitempty"`
+	Lastname   string                 `json:"lastname,omitempty"`
+	AppID      string                 `json:"appID,omitempty"`
+	AppRoleMap map[string][]string    `json:"appRoleMap,omitempty"`
+	Extra      map[string]interface{} `json:"extra,omitempty"`
+	Email      string                 `json:"email,omitempty"`
 }
 
 type JWT struct {
