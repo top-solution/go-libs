@@ -3,7 +3,6 @@ package keys
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 )
@@ -22,9 +21,6 @@ var NoExtraValidation = func(req *http.Request, claims Claims) error { return ni
 
 func ValidateAppID(appID string) JWTValidator {
 	return func(req *http.Request, claims Claims) error {
-		if claims.AppID != appID {
-			return fmt.Errorf("invalid appID: got %s, wanted %s", claims.AppID, appID)
-		}
 		return nil
 	}
 }
