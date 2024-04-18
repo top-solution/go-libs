@@ -42,7 +42,7 @@ func WithFields(ctx context.Context, fields map[string]interface{}) context.Cont
 func Debug(ctx context.Context, msg string, args ...interface{}) {
 	entry := getEntry(ctx)
 
-	entry.Debug(msg, args...)
+	entry.Debug(msg, getArgs(ctx, args...)...)
 }
 
 // Info will call the Info function on the entry saved in the given context.
@@ -51,7 +51,7 @@ func Debug(ctx context.Context, msg string, args ...interface{}) {
 func Info(ctx context.Context, msg string, args ...interface{}) {
 	entry := getEntry(ctx)
 
-	entry.Info(msg, getArgs(ctx, args...))
+	entry.Info(msg, getArgs(ctx, args...)...)
 }
 
 // Warn will call the Warn function on the entry saved in the given context.
@@ -60,7 +60,7 @@ func Info(ctx context.Context, msg string, args ...interface{}) {
 func Warn(ctx context.Context, msg string, args ...interface{}) {
 	entry := getEntry(ctx)
 
-	entry.Warn(msg, getArgs(ctx, args...))
+	entry.Warn(msg, getArgs(ctx, args...)...)
 }
 
 // Error will call the Warn function on the entry saved in the given context.
@@ -69,7 +69,7 @@ func Warn(ctx context.Context, msg string, args ...interface{}) {
 func Error(ctx context.Context, msg string, args ...interface{}) {
 	entry := getEntry(ctx)
 
-	entry.Error(msg, getArgs(ctx, args...))
+	entry.Error(msg, getArgs(ctx, args...)...)
 }
 
 func getEntry(ctx context.Context) log.Logger {
