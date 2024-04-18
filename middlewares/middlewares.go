@@ -121,6 +121,8 @@ func LogEnd(shouldLogFunc MetaCondition) func(h http.Handler) http.Handler {
 			rw := httpmdlwr.CaptureResponse(w)
 			h.ServeHTTP(rw, r)
 
+			meta.Status = rw.StatusCode
+
 			if !shouldLog(meta, shouldLogFunc) {
 				return
 			}
@@ -130,7 +132,7 @@ func LogEnd(shouldLogFunc MetaCondition) func(h http.Handler) http.Handler {
 				"duration":   meta.Duration.String(),
 				"method":     meta.Method,
 				"controller": meta.Service,
-				"status":     rw.StatusCode,
+				"status":     meta.Status,
 				"url":        meta.URL,
 				"verb":       meta.Verb,
 			})

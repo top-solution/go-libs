@@ -17,6 +17,7 @@ type Meta struct {
 	Method   string
 	Payload  interface{}
 	Service  string
+	Status   int
 	URL      string
 	Verb     string
 }
