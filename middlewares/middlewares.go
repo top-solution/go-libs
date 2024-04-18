@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/top-solution/go-libs/ctxlog"
 
 	log "github.com/inconshreveable/log15"
@@ -81,12 +80,12 @@ func Recover(enc func(context.Context, http.ResponseWriter) goahttp.Encoder) fun
 					runtime.Stack(stack, false)
 
 					ctx := ctxlog.WithField(r.Context(), "stack", strings.Trim(string(stack), "\x00"))
-					ctxlog.Error(ctx, "err", e)
+					ctxlog.Error(ctx, "Recovered from panic", "err", e)
 
 					encodeError := goahttp.ErrorEncoder(enc, nil)
 					err = encodeError(ctx, w, err)
 					if err != nil {
-						ctxlog.Error(ctx, "err", err)
+						ctxlog.Error(ctx, "Encode error", "err", err)
 					}
 				}
 			}()
@@ -126,7 +125,7 @@ func LogEnd(shouldLogFunc MetaCondition) func(h http.Handler) http.Handler {
 				return
 			}
 
-			ctx = ctxlog.WithFields(ctx, logrus.Fields{
+			ctx = ctxlog.WithFields(ctx, map[string]interface{}{
 				"bytes":    rw.ContentLength,
 				"duration": meta.Duration.String(),
 				"method":   meta.Method,
@@ -136,7 +135,7 @@ func LogEnd(shouldLogFunc MetaCondition) func(h http.Handler) http.Handler {
 				"verb":     meta.Verb,
 			})
 
-			ctxlog.Info(ctx, "action", "end")
+			ctxlog.Info(ctx, "Request end", "action", "end")
 		})
 	}
 }

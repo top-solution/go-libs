@@ -3,7 +3,6 @@ package middlewares
 import (
 	"context"
 
-	"github.com/sirupsen/logrus"
 	"github.com/top-solution/go-libs/ctxlog"
 
 	"github.com/top-solution/go-libs/middlewares/meta"
@@ -47,11 +46,11 @@ func LogStartEndpoint(shouldLogFunc MetaCondition) func(goa.Endpoint) goa.Endpoi
 			meta, _ := meta.ContextMeta(ctx)
 
 			if ShouldLogPayloads && meta.Service != "" {
-				ctx = ctxlog.WithFields(ctx, logrus.Fields{"method": meta.Method, "payload": meta.Payload, "service": meta.Service})
+				ctx = ctxlog.WithFields(ctx, map[string]interface{}{"method": meta.Method, "payload": meta.Payload, "service": meta.Service})
 			}
 
 			if !shouldLog(meta, shouldLogFunc) {
-				ctxlog.Info(ctx, "action", "start")
+				ctxlog.Info(ctx, "Request start", "action", "start")
 			}
 
 			res, err := e(ctx, req)
@@ -69,7 +68,7 @@ func LogError() func(goa.Endpoint) goa.Endpoint {
 			if err != nil {
 				e, ok := err.(*goa.ServiceError)
 				if !ok || e.Fault {
-					ctxlog.Error(ctx, "err", err)
+					ctxlog.Error(ctx, "Request failed", "err", err)
 				}
 			}
 

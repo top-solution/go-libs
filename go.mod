@@ -11,9 +11,7 @@ require (
 	github.com/inconshreveable/log15 v0.0.0-20201112154412-8562bdadbbac
 	github.com/ory/ladon v1.2.0
 	github.com/pressly/goose/v3 v3.7.0
-	github.com/prometheus/common v0.4.0
 	github.com/serjlee/frequency v1.1.0
-	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
 	github.com/volatiletech/sqlboiler/v4 v4.13.0
 	goa.design/goa/v3 v3.10.1
@@ -22,8 +20,6 @@ require (
 )
 
 require (
-	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
-	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimfeld/httppath v0.0.0-20170720192232-ee938bf73598 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
@@ -53,7 +49,6 @@ require (
 	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

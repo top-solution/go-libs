@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/inconshreveable/log15"
 	"github.com/lib/pq"
 	"github.com/pressly/goose/v3"
-	"github.com/prometheus/common/log"
 	"github.com/top-solution/go-libs/config"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
