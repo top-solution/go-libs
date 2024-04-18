@@ -24,10 +24,18 @@ func FilterLogLevel(logHandler log.Handler, config config.LogConfig) log.Handler
 		logHandler)
 }
 
-// InitTerminalLogger sets up a logger (ie: log.Root()) to only print in the terminal
+// GetFormat returns the log format given the log config
+func GetFormat(config config.LogConfig) log.Format {
+	if config.Format == "json" {
+		return log.JsonFormat()
+	}
+	return log.TerminalFormat()
+}
+
+// InitTerminalLogger sets up a a simple logger (ie: log.Root()) to print in the format specified in the given config
 func InitTerminalLogger(logger log.Logger, config config.LogConfig) {
 	logger.SetHandler(
-		FilterLogLevel(log.StreamHandler(os.Stdout, log.TerminalFormat()), config), // add a readable one for the terminal
+		FilterLogLevel(log.StreamHandler(os.Stdout, GetFormat(config)), config), // add a readable one for the terminal
 	)
 }
 

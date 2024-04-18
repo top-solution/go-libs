@@ -102,7 +102,7 @@ func ParseConfigWithPrefix(cfg interface{}, path string, prefix string) error {
 	return nil
 }
 
-// EmailConfig LogConfig is a default config struct for e-mail
+// EmailConfig is a default config struct for e-mail
 type EmailConfig struct {
 	Host              string `yaml:"host"`
 	Password          string `yaml:"password"`
@@ -117,6 +117,7 @@ type LogConfig struct {
 	Path       string              `yaml:"path" conf:"default:logs/,help:The directory to use to store logs"`
 	Expiration frequency.Frequency `yaml:"expiration" conf:"default:1w,help:How long should the logs kept"`
 	Level      string              `yaml:"level" conf:"default:debug,help:The log level (can be: debug, info, warn, error, crit)"`
+	Format     string              `yaml:"format" conf:"default:terminal,help:The log format (can be: terminal, json)"`
 }
 
 // DBConfig is a default config struct used to connect to a database
