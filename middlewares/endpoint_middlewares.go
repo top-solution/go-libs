@@ -46,7 +46,7 @@ func LogStartEndpoint(shouldLogFunc MetaCondition) func(goa.Endpoint) goa.Endpoi
 			meta, _ := meta.ContextMeta(ctx)
 
 			if ShouldLogPayloads && meta.Service != "" {
-				ctx = ctxlog.WithFields(ctx, map[string]interface{}{"method": meta.Method, "payload": meta.Payload, "service": meta.Service})
+				ctx = ctxlog.WithFields(ctx, map[string]interface{}{"method": meta.Method, "payload": meta.Payload, "controller": meta.Service})
 			}
 
 			if !shouldLog(meta, shouldLogFunc) {

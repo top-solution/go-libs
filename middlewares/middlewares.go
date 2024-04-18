@@ -126,13 +126,13 @@ func LogEnd(shouldLogFunc MetaCondition) func(h http.Handler) http.Handler {
 			}
 
 			ctx = ctxlog.WithFields(ctx, map[string]interface{}{
-				"bytes":    rw.ContentLength,
-				"duration": meta.Duration.String(),
-				"method":   meta.Method,
-				"service":  meta.Service,
-				"status":   rw.StatusCode,
-				"url":      meta.URL,
-				"verb":     meta.Verb,
+				"bytes":      rw.ContentLength,
+				"duration":   meta.Duration.String(),
+				"method":     meta.Method,
+				"controller": meta.Service,
+				"status":     rw.StatusCode,
+				"url":        meta.URL,
+				"verb":       meta.Verb,
 			})
 
 			ctxlog.Info(ctx, "Request end", "action", "end")
