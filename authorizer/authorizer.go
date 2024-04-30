@@ -32,7 +32,7 @@ func (c *NotInSetCondition) GetName() string {
 
 // Fulfills determines if the NotInSetCondition is fulfilled.
 // The NotInSetCondition is fulfilled if the provided strings are not matched in a set
-func (c *NotInSetCondition) Fulfills(value interface{}, _ *ladon.Request) bool {
+func (c *NotInSetCondition) Fulfills(ctx context.Context, value interface{}, _ *ladon.Request) bool {
 	if value == nil {
 		return true
 	}
@@ -72,7 +72,7 @@ func (c *InSetCondition) GetName() string {
 
 // Fulfills determines if the InSetCondition is fulfilled.
 // The InSetCondition is fulfilled if at least one of the provided strings are matched in a set
-func (c *InSetCondition) Fulfills(value interface{}, _ *ladon.Request) bool {
+func (c *InSetCondition) Fulfills(ctx context.Context, value interface{}, _ *ladon.Request) bool {
 	if value == nil {
 		return false
 	}
@@ -115,7 +115,7 @@ func NewLadon() *LadonAuthorizer {
 }
 
 func (l *LadonAuthorizer) IsUserAllowed(ctx context.Context, r *ladon.Request) error {
-	err := l.Ladon.IsAllowed(r)
+	err := l.Ladon.IsAllowed(ctx, r)
 	if err != nil {
 		return fmt.Errorf("you have no permission for action %s on %s (%v)", r.Action, r.Resource, r.Context)
 	}
@@ -145,7 +145,7 @@ func (l *LadonAuthorizer) LoadPoliciesFromJSONS(root string, fsys fs.FS) error {
 		}
 
 		// Create policy
-		err = l.Manager.Create(&policy)
+		err = l.Manager.Create(context.TODO(), &policy)
 		if err != nil {
 			return fmt.Errorf("create policy %s, file %s: %w", policy.ID, path, err)
 		}

@@ -1,6 +1,7 @@
 package authorizer
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -12,6 +13,7 @@ import (
 // The policies files are contained in the testdata/policies
 // They are loaded leveraging the fs.FS interface, so you can use any valid implementation, for example embed.FS from Go 1.16
 func TestLadonWarden(t *testing.T) {
+	ctx := context.TODO()
 	l := NewLadon()
 	err := l.LoadPoliciesFromJSONS("_policies", os.DirFS("./testdata"))
 	if err != nil {
@@ -19,7 +21,7 @@ func TestLadonWarden(t *testing.T) {
 		return
 	}
 
-	err = l.IsAllowed(&ladon.Request{
+	err = l.IsAllowed(ctx, &ladon.Request{
 		Action:   "pass",
 		Resource: "test",
 		Subject:  "this",
@@ -28,7 +30,7 @@ func TestLadonWarden(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = l.IsAllowed(&ladon.Request{
+	err = l.IsAllowed(ctx, &ladon.Request{
 		Action:   "pass",
 		Resource: "test",
 		Subject:  "that",
@@ -39,6 +41,7 @@ func TestLadonWarden(t *testing.T) {
 }
 
 func TestNotInSetCondition(t *testing.T) {
+	ctx := context.TODO()
 	cases := []struct {
 		Name     string
 		Unwanted []string
@@ -117,7 +120,7 @@ func TestNotInSetCondition(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%s-fulfills:%v", tc.Name, tc.Fulfills), func(t *testing.T) {
 			condition := NotInSetCondition{Denied: tc.Unwanted}
-			if result := condition.Fulfills(tc.AskedFor, nil); result != tc.Fulfills {
+			if result := condition.Fulfills(ctx, tc.AskedFor, nil); result != tc.Fulfills {
 				t.Fatalf("fulfill result should be %v, got %v", tc.Fulfills, result)
 			}
 		})
@@ -125,6 +128,7 @@ func TestNotInSetCondition(t *testing.T) {
 }
 
 func TestInSetCondition(t *testing.T) {
+	ctx := context.TODO()
 	cases := []struct {
 		Name     string
 		Valid    []string
@@ -215,7 +219,7 @@ func TestInSetCondition(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%s-fulfills:%v", tc.Name, tc.Fulfills), func(t *testing.T) {
 			condition := InSetCondition{Valid: tc.Valid}
-			if result := condition.Fulfills(tc.Input, nil); result != tc.Fulfills {
+			if result := condition.Fulfills(ctx, tc.Input, nil); result != tc.Fulfills {
 				t.Fatalf("fulfill result should be %v, got %v", tc.Fulfills, result)
 			}
 		})
