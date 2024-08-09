@@ -16,7 +16,6 @@ import (
 	"github.com/top-solution/go-libs/config"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 )
@@ -166,9 +165,9 @@ func (f FilterMap) ParseFilters(attribute string, having bool, filters ...string
 }
 
 func (f FilterMap) parseFilter(attribute string, op string, rawValue string, having bool) (QueryMod, string, interface{}, error) {
-	queryMod := qm.Where
+	queryMod := Where
 	if having {
-		queryMod = qm.Having
+		queryMod = Having
 	}
 	if IsUnaryOp(op) {
 		q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
@@ -240,7 +239,7 @@ func AddPagination(query *[]QueryMod, offset *int, limit *int) (err error) {
 
 type BeginnerExecutor interface {
 	boil.Beginner
-	boil.Executor
+	boil.ContextExecutor
 }
 
 // Transaction wraps a function within an SQL transaction, that can be used to run multiple statements in a safe way
@@ -302,7 +301,7 @@ func WithTx(ctx context.Context, tx *sql.Tx) context.Context {
 }
 
 // TxOr extracts a transaction from a context, with a fallback executor
-func TxOr(ctx context.Context, fallback boil.Executor) boil.Executor {
+func TxOr(ctx context.Context, fallback boil.ContextExecutor) boil.ContextExecutor {
 	tx := Tx(ctx)
 	if tx == nil {
 		return fallback
