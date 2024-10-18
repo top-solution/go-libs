@@ -3,6 +3,7 @@ package middlewares
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"runtime"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/top-solution/go-libs/ctxlog"
 
-	log "github.com/inconshreveable/log15"
 	"github.com/top-solution/go-libs/middlewares/appID"
 	"github.com/top-solution/go-libs/middlewares/meta"
 	goahttp "goa.design/goa/v3/http"
@@ -166,7 +166,7 @@ func RequestID() func(http.Handler) http.Handler {
 }
 
 // CtxLogger augments the context object with a ctxlog entry
-func CtxLogger(entry log.Logger) func(http.Handler) http.Handler {
+func CtxLogger(entry *slog.Logger) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -174,7 +174,8 @@ func CtxLogger(entry log.Logger) func(http.Handler) http.Handler {
 			if !ok {
 				panic("metadata not found in context. Have you setup the meta.RequestMeta middleware?")
 			}
-			entry = entry.New("url", meta.URL, "verb", meta.Verb)
+
+			entry.Handler().WithAttrs([]slog.Attr{slog.String("url", meta.URL), slog.String("verb", meta.Verb)})
 
 			ctx = context.WithValue(ctx, ctxlog.LogKey, entry)
 			h.ServeHTTP(w, r.WithContext(ctx))

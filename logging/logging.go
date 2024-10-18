@@ -1,13 +1,15 @@
 package logging
 
 import (
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
-	log "github.com/inconshreveable/log15"
 	"github.com/serjlee/frequency"
 	"github.com/top-solution/go-libs/config"
 	"github.com/top-solution/go-libs/scheduler"
@@ -16,31 +18,32 @@ import (
 var cleanupLogsTask *scheduler.Entry
 
 // FilterLogLevel wraps a log handler with a log level filter, given the log config
-func FilterLogLevel(logHandler log.Handler, config config.LogConfig) log.Handler {
-	lvl, _ := log.LvlFromString(config.Level)
+func FilterLogLevel(config config.LogConfig) slog.Level {
+	logLevel, _ := SlogLvlFromString(config.Level)
 
-	return log.LvlFilterHandler(
-		lvl,
-		logHandler)
+	return logLevel
+
 }
 
 // GetFormat returns the log format given the log config
-func GetFormat(config config.LogConfig) log.Format {
+//FIXME
+/* func GetFormat(config config.LogConfig) log.Format {
 	if config.Format == "json" {
 		return log.JsonFormat()
 	}
 	return log.TerminalFormat()
 }
-
-// InitTerminalLogger sets up a a simple logger (ie: log.Root()) to print in the format specified in the given config
-func InitTerminalLogger(logger log.Logger, config config.LogConfig) {
-	logger.SetHandler(
-		FilterLogLevel(log.StreamHandler(os.Stdout, GetFormat(config)), config), // add a readable one for the terminal
-	)
+*/
+// InitTerminalLogger sets up a logger (ie: log.Root()) to only print in the terminal
+func InitTerminalLogger(config config.LogConfig) *slog.Logger {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: FilterLogLevel(config),
+	}))
+	return logger
 }
 
 // InitFileLogger sets up a logger (ie: log.Root()) to both print in the terminal and in a JSON logfile
-func InitFileLogger(logger log.Logger, config config.LogConfig) error {
+func InitFileLogger(config config.LogConfig) error {
 	if config.Path == "" {
 		config.Path = "log"
 	}
@@ -54,31 +57,28 @@ func InitFileLogger(logger log.Logger, config config.LogConfig) error {
 		return err
 	}
 	// set default logger
-	logHandler, err := log.FileHandler(filepath.Join(config.Path, time.Now().Format(format)), log.JsonFormat())
-	if err != nil {
-		return err
-	}
-	logger.SetHandler(
-		log.MultiHandler(
-			FilterLogLevel(logHandler, config),
-			FilterLogLevel(log.StreamHandler(os.Stdout, log.TerminalFormat()), config), // add a readable one for the terminal
-		))
+
+	logHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: FilterLogLevel(config),
+	})
+
+	logger := slog.New(logHandler)
 
 	// cleanup old logs
 	cleanupFn := func() {
 		logFiles, err := filepath.Glob(filepath.Join(config.Path, "*.json"))
 		if err != nil {
-			log.Error(err.Error())
+			logger.Error(err.Error())
 			return
 		}
 		for _, file := range logFiles {
 			date, _ := time.Parse(filepath.Join(config.Path, format), file)
 
 			if config.Expiration.ShouldRun(date, time.Now()) {
-				log.Debug("Deleting old log file:"+file, "age", time.Since(date))
+				logger.Debug("Deleting old log file:"+file, "age", time.Since(date))
 				err := os.Remove(file)
 				if err != nil {
-					log.Error(err.Error())
+					logger.Error(err.Error())
 				}
 			}
 		}
@@ -106,6 +106,26 @@ func LogGoaEndpoints(srv GoaServer) {
 
 	for i := 0; i < mounts.Len(); i++ {
 		m := reflect.Indirect(mounts.Index(i))
-		log.Info("mounted", "svc", srv.Service(), "method", m.FieldByName("Method"), "verb", m.FieldByName("Verb"), "pattern", m.FieldByName("Pattern"))
+		slog.Info("mounted", "svc", srv.Service(), "method", m.FieldByName("Method"), "verb", m.FieldByName("Verb"), "pattern", m.FieldByName("Pattern"))
+	}
+}
+
+func SlogLvlFromString(lvlString string) (slog.Level, error) {
+	switch lvlString {
+	case "debug", "dbug":
+		return slog.LevelDebug, nil
+	case "info":
+		return slog.LevelInfo, nil
+	case "warn":
+		return slog.LevelWarn, nil
+	case "error", "eror":
+		return slog.LevelError, nil
+	default:
+		// try to catch e.g. "INFO", "WARN" without slowing down the fast path
+		lower := strings.ToLower(lvlString)
+		if lower != lvlString {
+			return SlogLvlFromString(lower)
+		}
+		return slog.LevelDebug, fmt.Errorf("slog: unknown level: %v", lvlString)
 	}
 }
