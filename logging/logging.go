@@ -66,7 +66,6 @@ func InitFileLogger(config config.LogConfig) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
 	w := io.MultiWriter(file, os.Stdout)
 
