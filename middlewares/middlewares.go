@@ -175,7 +175,7 @@ func CtxLogger(entry *slog.Logger) func(http.Handler) http.Handler {
 				panic("metadata not found in context. Have you setup the meta.RequestMeta middleware?")
 			}
 
-			entry.Handler().WithAttrs([]slog.Attr{slog.String("url", meta.URL), slog.String("verb", meta.Verb)})
+			entry.With(slog.String("url", meta.URL), slog.String("verb", meta.Verb))
 
 			ctx = context.WithValue(ctx, ctxlog.LogKey, entry)
 			h.ServeHTTP(w, r.WithContext(ctx))
