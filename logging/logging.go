@@ -62,7 +62,7 @@ func InitFileLogger(config config.LogConfig) error {
 		return err
 	}
 	// set default logger
-	file, err := os.OpenFile(filepath.Join(config.Path, time.Now().Format(format)), os.O_CREATE, 0644)
+	file, err := os.OpenFile(filepath.Join(config.Path, time.Now().Format(format)), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
