@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lmittmann/tint"
 	"github.com/serjlee/frequency"
 	"github.com/top-solution/go-libs/config"
 	"github.com/top-solution/go-libs/scheduler"
@@ -35,11 +36,14 @@ func FilterLogLevel(config config.LogConfig) slog.Level {
 }
 */
 // InitTerminalLogger sets up a logger (ie: log.Root()) to only print in the terminal
-func InitTerminalLogger(config config.LogConfig) *slog.Logger {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: FilterLogLevel(config),
-	}))
-	return logger
+func InitTerminalLogger(config config.LogConfig) {
+	logger := slog.New(
+		tint.NewHandler(os.Stdout, &tint.Options{
+			Level:      FilterLogLevel(config),
+			TimeFormat: time.Kitchen,
+		}),
+	)
+	slog.SetDefault(logger)
 }
 
 // InitFileLogger sets up a logger (ie: log.Root()) to both print in the terminal and in a JSON logfile
