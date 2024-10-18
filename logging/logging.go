@@ -2,6 +2,7 @@ package logging
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -67,8 +68,10 @@ func InitFileLogger(config config.LogConfig) error {
 	}
 	defer file.Close()
 
+	w := io.MultiWriter(file, os.Stdout)
+
 	logHandler := slog.NewJSONHandler(
-		file,
+		w,
 		&slog.HandlerOptions{
 			Level: FilterLogLevel(config),
 		},
