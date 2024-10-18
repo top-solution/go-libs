@@ -61,10 +61,18 @@ func InitFileLogger(config config.LogConfig) error {
 		return err
 	}
 	// set default logger
+	file, err := os.Open(filepath.Join(config.Path, time.Now().Format(format)))
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
-	logHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: FilterLogLevel(config),
-	})
+	logHandler := slog.NewJSONHandler(
+		file,
+		&slog.HandlerOptions{
+			Level: FilterLogLevel(config),
+		},
+	)
 
 	logger := slog.New(logHandler)
 
