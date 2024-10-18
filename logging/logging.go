@@ -74,23 +74,23 @@ func InitFileLogger(config config.LogConfig) error {
 		},
 	)
 
-	logger := slog.New(logHandler)
+	slog.SetDefault(slog.New(logHandler))
 
 	// cleanup old logs
 	cleanupFn := func() {
 		logFiles, err := filepath.Glob(filepath.Join(config.Path, "*.json"))
 		if err != nil {
-			logger.Error(err.Error())
+			slog.Error(err.Error())
 			return
 		}
 		for _, file := range logFiles {
 			date, _ := time.Parse(filepath.Join(config.Path, format), file)
 
 			if config.Expiration.ShouldRun(date, time.Now()) {
-				logger.Debug("Deleting old log file:"+file, "age", time.Since(date))
+				slog.Debug("Deleting old log file:"+file, "age", time.Since(date))
 				err := os.Remove(file)
 				if err != nil {
-					logger.Error(err.Error())
+					slog.Error(err.Error())
 				}
 			}
 		}
