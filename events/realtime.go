@@ -1,11 +1,11 @@
 package events
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
-	log "github.com/inconshreveable/log15"
 )
 
 type Message struct {
@@ -39,10 +39,10 @@ var upgrader = websocket.Upgrader{
 }
 
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	log.Info("ws client connected", "address", r.RemoteAddr)
+	slog.Info("ws client connected", "address", r.RemoteAddr)
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Error(err.Error())
+		slog.Error(err.Error())
 		return
 	}
 	// ws.EnableWriteCompression(true)

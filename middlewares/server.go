@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,7 +12,6 @@ import (
 	"strings"
 	"syscall"
 
-	log "github.com/inconshreveable/log15"
 	fslib "github.com/top-solution/go-libs/fs"
 	"github.com/top-solution/go-libs/middlewares/codec"
 	"github.com/top-solution/go-libs/middlewares/meta"
@@ -20,14 +20,14 @@ import (
 )
 
 type Server struct {
-	Log log.Logger
+	Log *slog.Logger
 	Dec func(r *http.Request) goahttp.Decoder
 	Enc func(context.Context, http.ResponseWriter) goahttp.Encoder
 	Mux goahttp.Muxer
 	Eh  func(context.Context, http.ResponseWriter, error)
 }
 
-func New(entry log.Logger) Server {
+func New(entry *slog.Logger) Server {
 	dec := goahttp.RequestDecoder
 	enc := codec.ResponseEncoder // use custom encoder handling CSV
 

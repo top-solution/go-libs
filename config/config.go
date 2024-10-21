@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/ardanlabs/conf/v3"
 	"github.com/goccy/go-yaml"
-	log "github.com/inconshreveable/log15"
 	"github.com/serjlee/frequency"
 	"github.com/top-solution/go-libs/version"
 )
@@ -88,7 +88,7 @@ func ParseConfigWithPrefix(cfg interface{}, path string, prefix string) error {
 	if err == nil {
 		help, err = conf.Parse(prefix, cfg, yamlConfData)
 	} else {
-		log.Root().Warn("unable to read YAML config from " + path + ": skipping")
+		slog.Warn("unable to read YAML config from " + path + ": skipping")
 		help, err = conf.Parse(prefix, cfg)
 	}
 	if err != nil {

@@ -1,10 +1,10 @@
 package events
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/gorilla/websocket"
-	log "github.com/inconshreveable/log15"
 )
 
 // Client is an middleman between the websocket connection and the ingestion hub.
@@ -35,7 +35,7 @@ func (c *Client) readPump() {
 		_, _, err := c.ws.NextReader()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err) {
-				log.Info("ws client disconnected", "address", c.ws.RemoteAddr().String())
+				slog.Info("ws client disconnected", "address", c.ws.RemoteAddr().String())
 				c.ws.Close()
 			}
 			break

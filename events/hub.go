@@ -2,9 +2,8 @@ package events
 
 import (
 	"encoding/json"
+	"log/slog"
 	"time"
-
-	log "github.com/inconshreveable/log15"
 )
 
 // Hub maintains the set of active connections and broadcasts messages to the
@@ -59,7 +58,7 @@ func (h *Hub) handleWebsockets() {
 		case m := <-h.Broadcast:
 			encoded, err := json.Marshal(m)
 			if err != nil {
-				log.Error("encode message", "err", err)
+				slog.Error("encode message", "err", err)
 			}
 
 			for c := range h.connections {

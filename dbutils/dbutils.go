@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"runtime/debug"
 	"strings"
 	"time"
 
-	log "github.com/inconshreveable/log15"
 	"github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 	"github.com/top-solution/go-libs/config"
@@ -280,7 +280,7 @@ func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx co
 			default:
 				err = fmt.Errorf("transaction failed for unknown panic: %v", x)
 			}
-			log.Error("transaction failed", "err", err, "stack", string(debug.Stack()))
+			slog.Error("transaction failed", "err", err, "stack", string(debug.Stack()))
 			err = fmt.Errorf("%v", err)
 		} else if err != nil {
 			rollbackErr := tx.Rollback() // err is non-nil; don't change it
