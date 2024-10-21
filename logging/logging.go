@@ -1,8 +1,8 @@
 package logging
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,6 +19,38 @@ import (
 
 var cleanupLogsTask *scheduler.Entry
 
+type MultiHandler []slog.Handler
+
+func (m MultiHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	if len(m) == 0 {
+		return false
+	}
+	for _, h := range m {
+		if h.Enabled(ctx, level) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m MultiHandler) Handle(ctx context.Context, record slog.Record) error {
+	for _, h := range m {
+		err := h.Handle(ctx, record)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m MultiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return nil
+}
+
+func (m MultiHandler) WithGroup(name string) slog.Handler {
+	return nil
+}
+
 // FilterLogLevel wraps a log handler with a log level filter, given the log config
 func FilterLogLevel(config config.LogConfig) slog.Level {
 	logLevel, _ := SlogLvlFromString(config.Level)
@@ -27,15 +59,6 @@ func FilterLogLevel(config config.LogConfig) slog.Level {
 
 }
 
-// GetFormat returns the log format given the log config
-//FIXME
-/* func GetFormat(config config.LogConfig) log.Format {
-	if config.Format == "json" {
-		return log.JsonFormat()
-	}
-	return log.TerminalFormat()
-}
-*/
 // InitTerminalLogger sets up a logger (ie: log.Root()) to only print in the terminal
 func InitTerminalLogger(config config.LogConfig) {
 	logger := slog.New(
@@ -67,16 +90,23 @@ func InitFileLogger(config config.LogConfig) error {
 		return err
 	}
 
-	w := io.MultiWriter(file, os.Stdout)
+	//w := io.MultiWriter(file, os.Stdout)
 
-	logHandler := slog.NewJSONHandler(
-		w,
+	jsonSlogHandler := slog.NewJSONHandler(
+		file,
 		&slog.HandlerOptions{
 			Level: FilterLogLevel(config),
 		},
 	)
 
-	slog.SetDefault(slog.New(logHandler))
+	terminalSlogHandler := tint.NewHandler(os.Stdout, &tint.Options{
+		Level:      FilterLogLevel(config),
+		TimeFormat: time.Kitchen,
+	})
+
+	slogHandlers := MultiHandler{jsonSlogHandler, terminalSlogHandler}
+
+	slog.SetDefault(slog.New(slogHandlers))
 
 	// cleanup old logs
 	cleanupFn := func() {
