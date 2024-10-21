@@ -30,9 +30,17 @@ func (m MultiHandler) Handle(ctx context.Context, record slog.Record) error {
 }
 
 func (m MultiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return nil
+	multiHandlerAttrs := MultiHandler{}
+	for _, h := range m {
+		multiHandlerAttrs = append(multiHandlerAttrs, h.WithAttrs(attrs))
+	}
+	return multiHandlerAttrs
 }
 
 func (m MultiHandler) WithGroup(name string) slog.Handler {
-	return nil
+	multiHandlerGroup := MultiHandler{}
+	for _, h := range m {
+		multiHandlerGroup = append(multiHandlerGroup, h.WithGroup(name))
+	}
+	return multiHandlerGroup
 }

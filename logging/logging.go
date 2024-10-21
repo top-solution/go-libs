@@ -57,8 +57,6 @@ func InitFileLogger(config config.LogConfig) error {
 		return err
 	}
 
-	//w := io.MultiWriter(file, os.Stdout)
-
 	jsonSlogHandler := slog.NewJSONHandler(
 		file,
 		&slog.HandlerOptions{
