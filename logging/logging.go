@@ -35,7 +35,7 @@ func GetSlogHandlerByFormat(config config.LogConfig) slog.Handler {
 	}
 	return tint.NewHandler(os.Stdout, &tint.Options{
 		Level:      FilterLogLevel(config),
-		TimeFormat: time.Kitchen,
+		TimeFormat: time.DateTime,
 	})
 }
 
