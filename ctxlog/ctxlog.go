@@ -1,10 +1,8 @@
-// TODO: migrate to log/slog
 package ctxlog
 
 import (
 	"context"
-
-	log "github.com/inconshreveable/log15"
+	"log/slog"
 )
 
 type logKey string
@@ -72,10 +70,10 @@ func Error(ctx context.Context, msg string, args ...interface{}) {
 	entry.Error(msg, getArgs(ctx, args...)...)
 }
 
-func getEntry(ctx context.Context) log.Logger {
-	entry, ok := ctx.Value(LogKey).(log.Logger)
+func getEntry(ctx context.Context) slog.Logger {
+	entry, ok := ctx.Value(LogKey).(slog.Logger)
 	if !ok {
-		entry = log.Root()
+		entry = *slog.Default()
 	}
 
 	return entry
