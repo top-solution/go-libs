@@ -9,6 +9,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/gorilla/websocket v1.5.1
 	github.com/lib/pq v1.10.9
+	github.com/lmittmann/tint v1.0.5
 	github.com/ory/ladon v1.3.0
 	github.com/pressly/goose/v3 v3.20.0
 	github.com/serjlee/frequency v1.1.0
@@ -30,7 +31,6 @@ require (
 	github.com/google/gxui v0.0.0-20151028112939-f85e0a97b3a4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
-	github.com/lmittmann/tint v1.0.5 // indirect
 	github.com/manveru/faker v0.0.0-20171103152722-9fbc68a78c4d // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
