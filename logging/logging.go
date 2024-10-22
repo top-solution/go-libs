@@ -39,7 +39,7 @@ func GetSlogHandlerByFormat(config config.LogConfig) slog.Handler {
 	})
 }
 
-// InitTerminalLogger sets up a logger (ie: log.Root()) to only print in the terminal
+// InitTerminalLogger sets the default logger to only print in the terminal
 func InitTerminalLogger(config config.LogConfig) {
 	logger := slog.New(
 		GetSlogHandlerByFormat(config),
@@ -47,7 +47,7 @@ func InitTerminalLogger(config config.LogConfig) {
 	slog.SetDefault(logger)
 }
 
-// InitFileLogger sets up a logger (ie: log.Root()) to both print in the terminal and in a JSON logfile
+// InitFileLogger sets up the default logger to both print in the terminal and in a JSON logfile
 func InitFileLogger(config config.LogConfig) error {
 	if config.Path == "" {
 		config.Path = "log"
