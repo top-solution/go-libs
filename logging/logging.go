@@ -26,13 +26,23 @@ func FilterLogLevel(config config.LogConfig) slog.Level {
 
 }
 
+// GetSlogHandlerByFormat returns the log handler given the log config
+func GetSlogHandlerByFormat(config config.LogConfig) slog.Handler {
+	if config.Format == "json" {
+		return slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: FilterLogLevel(config),
+		})
+	}
+	return tint.NewHandler(os.Stdout, &tint.Options{
+		Level:      FilterLogLevel(config),
+		TimeFormat: time.Kitchen,
+	})
+}
+
 // InitTerminalLogger sets up a logger (ie: log.Root()) to only print in the terminal
 func InitTerminalLogger(config config.LogConfig) {
 	logger := slog.New(
-		tint.NewHandler(os.Stdout, &tint.Options{
-			Level:      FilterLogLevel(config),
-			TimeFormat: time.Kitchen,
-		}),
+		GetSlogHandlerByFormat(config),
 	)
 	slog.SetDefault(logger)
 }
@@ -57,19 +67,14 @@ func InitFileLogger(config config.LogConfig) error {
 		return err
 	}
 
-	jsonSlogHandler := slog.NewJSONHandler(
+	jsonSlogHandlerForFile := slog.NewJSONHandler(
 		file,
 		&slog.HandlerOptions{
 			Level: FilterLogLevel(config),
 		},
 	)
 
-	terminalSlogHandler := tint.NewHandler(os.Stdout, &tint.Options{
-		Level:      FilterLogLevel(config),
-		TimeFormat: time.Kitchen,
-	})
-
-	slogHandlers := MultiHandler{jsonSlogHandler, terminalSlogHandler}
+	slogHandlers := MultiHandler{jsonSlogHandlerForFile, GetSlogHandlerByFormat(config)}
 
 	slog.SetDefault(slog.New(slogHandlers))
 
