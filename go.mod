@@ -1,6 +1,8 @@
 module github.com/top-solution/go-libs
 
-go 1.22
+go 1.23
+
+toolchain go1.23.1
 
 require (
 	github.com/ardanlabs/conf/v3 v3.1.7
@@ -17,7 +19,13 @@ require (
 	github.com/volatiletech/sqlboiler/v4 v4.16.2
 	goa.design/goa/v3 v3.16.1
 	goa.design/plugins v2.2.6+incompatible
-	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
+)
+
+require (
+	github.com/aarondl/json v0.0.0-20221020222930-8b0db17ef1bf // indirect
+	github.com/aarondl/opt v0.0.0-20230114172057-b91f370c41f0 // indirect
+	github.com/qdm12/reprint v0.0.0-20200326205758-722754a53494 // indirect
+	github.com/stephenafamo/scan v0.6.1 // indirect
 )
 
 require (
@@ -44,16 +52,17 @@ require (
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/smartystreets/goconvey v1.8.1 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
+	github.com/stephenafamo/bob v0.30.0
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/strmangle v0.0.6 // indirect
 	github.com/zach-klippenstein/goregen v0.0.0-20160303162051-795b5e3961ea // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	goa.design/goa v2.2.5+incompatible // indirect
 	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/net v0.24.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/tools v0.20.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/tools v0.21.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
