@@ -236,11 +236,25 @@ func (f FilterMap) parseFilter(attribute string, op string, rawValue string, hav
 }
 
 func (f FilterMap) parseBobFilter(attribute string, op string, rawValue string, having bool) (bob.Mod[*dialect.SelectQuery], string, interface{}, error) {
-	//FIXME
-	//queryMod := []bob.Mod[*dialect.SelectQuery]{}
-	/* if having {
-		queryMod = sm.Having
-	} */
+	if having {
+		if IsUnaryOp(op) {
+			q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
+			return bob.Mod[*dialect.SelectQuery](sm.Having(psql.Raw(q))), q, nil, nil
+		}
+		if op == "in" || op == "notIn" {
+			var value []interface{}
+			stringValue := strings.Split(rawValue, ",")
+			for _, v := range stringValue {
+				value = append(value, v)
+			}
+
+			q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
+			return bob.Mod[*dialect.SelectQuery](sm.Having(psql.Raw(q, pq.Array(value)))), q, pq.Array(value), nil
+		}
+		q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
+		return bob.Mod[*dialect.SelectQuery](sm.Having(psql.Raw(q, rawValue))), q, rawValue, nil
+	}
+
 	if IsUnaryOp(op) {
 		q := strings.ReplaceAll(WhereFilters[op], "{}", f[attribute])
 		return bob.Mod[*dialect.SelectQuery](sm.Where(psql.Raw(q))), q, nil, nil
@@ -287,6 +301,16 @@ func (f FilterMap) AddHavingFilters(query *[]qm.QueryMod, attribute string, data
 		return err
 	}
 	*query = append(*query, mod)
+	return nil
+}
+
+// AddHavingFilters adds the parsed filters to the query with a Having QueryMod
+func (f FilterMap) AddBobHavingFilters(query *[]bob.Mod[*dialect.SelectQuery], attribute string, data ...string) (err error) {
+	mod, _, _, _, err := f.ParseBobFilters(attribute, true, data...)
+	if err != nil {
+		return err
+	}
+	*query = append(*query, mod...)
 	return nil
 }
 
