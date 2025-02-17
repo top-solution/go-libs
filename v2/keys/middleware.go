@@ -26,6 +26,16 @@ func EnableWithPrefix(prefix string) Option {
 	}
 }
 
+func DisableWithPrefix(prefix string) Option {
+	return func(h http.Handler, w http.ResponseWriter, r *http.Request, claims Claims, beforeAuth bool) (bool, error) {
+		if beforeAuth && strings.HasPrefix(r.URL.Path, prefix) {
+			h.ServeHTTP(w, r)
+			return false, nil
+		}
+		return true, nil
+	}
+}
+
 // Option is a function that can be used to configure the middleware
 // It returns a boolean indicating if the request should actually be processed
 type Option func(h http.Handler, w http.ResponseWriter, r *http.Request, claims Claims, beforeAuth bool) (cont bool, err error)
