@@ -52,6 +52,7 @@ func (b *BobFilterer) ParseFilter(filter, alias string, op string, rawValue stri
 		return sm.Where(psql.Raw(q, pq.Array(value))), q, pq.Array(value), nil
 
 	}
+
 	q := strings.ReplaceAll(filter, "{}", alias)
 	return sm.Where(psql.Raw(q, rawValue)), q, rawValue, nil
 }

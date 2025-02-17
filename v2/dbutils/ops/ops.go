@@ -44,6 +44,16 @@ func NewFilterMap[T any](fields map[string]string, f Filterer[T]) FilterMap[T] {
 	}
 }
 
+// AddFilters parses the filters and adds them to the given list of query mods
+func (f FilterMap[T]) AddFilters(q *[]T, attribute string, filters ...string) error {
+	filter, _, _, _, err := parseFilters(f.filterer, f.fields, attribute, false, filters...)
+	if err != nil {
+		return fmt.Errorf("error parsing filters: %w", err)
+	}
+	*q = append(*q, filter...)
+	return nil
+}
+
 // ParseFilters parses the filters and returns the query mods, raw queries, operators and values
 func (f FilterMap[T]) ParseFilters(attribute string, having bool, filters ...string) ([]T, []string, []string, []interface{}, error) {
 	return parseFilters(f.filterer, f.fields, attribute, having, filters...)
