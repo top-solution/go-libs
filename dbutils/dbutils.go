@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net/url"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -344,6 +345,19 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 			connectionString = fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s",
 				conf.User, conf.Password, conf.Server, conf.Port, conf.DB)
 		}
+		query := url.Values{}
+		query.Add("database", conf.DB)
+		if conf.Instance != "" {
+			u := &url.URL{
+				Scheme:   "sqlserver",
+				User:     url.UserPassword(conf.User, conf.Password),
+				Host:     conf.Server,
+				Path:     conf.Instance,
+				RawQuery: query.Encode(),
+			}
+			connectionString = u.String()
+		}
+
 		// FIXME: this means we can't have both a mssql and a postgres connections active at the same time
 		WhereFilters = MSSQLWhereFilters
 		CurrentDriver = MSSQLDriver

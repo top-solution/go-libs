@@ -138,4 +138,6 @@ type DBConfig struct {
 		Run  bool   `yaml:"run" conf:"default:false,help:If true, migrations will be run on app startup"`
 		Path string `yaml:"path" conf:"default:sql,help:The path to the directory containing the Goose-compatible SQL migrations"`
 	} `yaml:"migrations"`
+	// Server is instance host address
+	Instance string `yaml:"instance" conf:"help:The db host"`
 }
