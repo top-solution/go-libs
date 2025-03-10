@@ -62,6 +62,17 @@ func TestConnectionString(t *testing.T) {
 			},
 			expectedString: "sqlserver://user:password@MSSQLSERVER/INSTANCE?database=databasename",
 		},
+
+		{
+			name: "mssql with instance and special characters",
+			conf: DBConfig{
+				Driver:   "sqlserver",
+				Server:   `MSSQL\/SERVER`,
+				Instance: "INS?TANCE",
+				DB:       "databa_;:sename",
+			},
+			expectedString: "sqlserver://MSSQL%5C%2FSERVER/INS%3FTANCE?database=databa_%3B%3Asename",
+		},
 	}
 
 	for _, tc := range cases {
