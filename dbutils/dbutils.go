@@ -345,9 +345,9 @@ func Open(conf config.DBConfig, fsys fs.FS) (*DB, int64, error) {
 			connectionString = fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s",
 				conf.User, conf.Password, conf.Server, conf.Port, conf.DB)
 		}
-		query := url.Values{}
-		query.Add("database", conf.DB)
 		if conf.Instance != "" {
+			query := url.Values{}
+			query.Add("database", conf.DB)
 			u := &url.URL{
 				Scheme:   "sqlserver",
 				User:     url.UserPassword(conf.User, conf.Password),
