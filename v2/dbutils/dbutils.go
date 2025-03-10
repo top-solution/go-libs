@@ -180,6 +180,7 @@ func Open(conf DBConfig, fsys fs.FS) (*DB, int64, error) {
 
 	if conf.Driver == string(PostgresDriver) {
 		query.Add("dbname", conf.DB)
+		query.Add("sslmode", "disable")
 		CurrentDriver = PostgresDriver
 	}
 
