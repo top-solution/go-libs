@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net/url"
 	"runtime/debug"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 type DriverType string
 
 const (
-	MSSQLDriver    DriverType = "mssql"
+	MSSQLDriver    DriverType = "sqlserver"
 	PostgresDriver DriverType = "postgres"
 )
 
@@ -74,6 +75,8 @@ type DBConfig struct {
 		Run  bool   `yaml:"run" conf:"default:false,help:If true, migrations will be run on app startup"`
 		Path string `yaml:"path" conf:"default:sql,help:The path to the directory containing the Goose-compatible SQL migrations"`
 	} `yaml:"migrations"`
+	// If connecting to an instance instead of a port
+	Instance string `yaml:"instance" conf:"help:The db instance"`
 }
 
 // TransactionCtx is the same as Transaction, but either embeds the transaction in the given context
@@ -155,28 +158,12 @@ type DB struct {
 // It expects a fs.FS in order to fetch and run the DB migrations
 // If you don't need them, just pass nil instead
 func Open(conf DBConfig, fsys fs.FS) (*DB, int64, error) {
-	connectionString := ""
 
 	if conf.Driver == "" {
 		return nil, 0, errors.New("no SQL driver specified: please use one of [mssql,sqlserver,postgres]")
 	}
 
-	switch conf.Driver {
-	case "mssql":
-		if conf.User == "" {
-			connectionString = fmt.Sprintf("server=%s;port=%d;database=%s",
-				conf.Server, conf.Port, conf.DB)
-		} else {
-			connectionString = fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s",
-				conf.User, conf.Password, conf.Server, conf.Port, conf.DB)
-		}
-		CurrentDriver = MSSQLDriver
-	case "postgres":
-		connectionString = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-			conf.Server, conf.Port, conf.User, conf.Password, conf.DB)
-
-		CurrentDriver = PostgresDriver
-	}
+	connectionString := fromDBConfToConnectionString(conf)
 
 	// Init Goose
 	err := goose.SetDialect(conf.Driver)
@@ -207,13 +194,7 @@ func Open(conf DBConfig, fsys fs.FS) (*DB, int64, error) {
 
 	// DB should be ready, run migrations if needed
 	if conf.Migrations.Run {
-		// Goose wants to use the "sqlserver" driver, never "mssql"
-		driver := conf.Driver
-		if driver == "mssql" {
-			driver = "sqlserver"
-		}
-
-		db, err := sql.Open(driver, connectionString)
+		db, err := sql.Open(conf.Driver, connectionString)
 		if err != nil {
 			return nil, -1, fmt.Errorf("open db for migrations: %w", err)
 		}
@@ -231,6 +212,43 @@ func Open(conf DBConfig, fsys fs.FS) (*DB, int64, error) {
 	}
 
 	return &DB{DB: db, conf: conf, fsys: fsys}, currentVersion, nil
+}
+
+// Convert the database configuration to connection string
+func fromDBConfToConnectionString(conf DBConfig) string {
+	query := url.Values{}
+
+	u := &url.URL{
+		Scheme: conf.Driver,
+		Host:   conf.Server,
+	}
+	if conf.Port != 0 {
+		u.Host += fmt.Sprintf(":%d", conf.Port)
+	}
+
+	if conf.Driver == string(MSSQLDriver) {
+		query.Add("database", conf.DB)
+		CurrentDriver = MSSQLDriver
+	}
+
+	if conf.Driver == string(PostgresDriver) {
+		query.Add("dbname", conf.DB)
+		query.Add("sslmode", "disable")
+		CurrentDriver = PostgresDriver
+	}
+
+	if conf.User != "" {
+		u.User = url.UserPassword(conf.User, conf.Password)
+	}
+
+	if conf.Instance != "" {
+		u.Path = conf.Instance
+	}
+
+	u.RawQuery = query.Encode()
+	connectionString := u.String()
+
+	return connectionString
 }
 
 // Up runs the migrations up to the latest version

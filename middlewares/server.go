@@ -41,7 +41,8 @@ func New(entry *slog.Logger) Server {
 		Dec: dec,
 		Enc: enc,
 		Eh: func(ctx context.Context, w http.ResponseWriter, err error) {
-			entry.Error("%w", err)
+			entry.Error("Internal Error", "err", err)
+
 		},
 	}
 }
