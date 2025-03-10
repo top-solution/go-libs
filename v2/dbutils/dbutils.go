@@ -163,37 +163,7 @@ func Open(conf DBConfig, fsys fs.FS) (*DB, int64, error) {
 		return nil, 0, errors.New("no SQL driver specified: please use one of [mssql,sqlserver,postgres]")
 	}
 
-	query := url.Values{}
-
-	u := &url.URL{
-		Scheme: conf.Driver,
-		Host:   conf.Server,
-	}
-	if conf.Port != 0 {
-		u.Host += fmt.Sprintf(":%d", conf.Port)
-	}
-
-	if conf.Driver == string(MSSQLDriver) {
-		query.Add("database", conf.DB)
-		CurrentDriver = MSSQLDriver
-	}
-
-	if conf.Driver == string(PostgresDriver) {
-		query.Add("dbname", conf.DB)
-		query.Add("sslmode", "disable")
-		CurrentDriver = PostgresDriver
-	}
-
-	if conf.User != "" {
-		u.User = url.UserPassword(conf.User, conf.Password)
-	}
-
-	if conf.Instance != "" {
-		u.Path = conf.Instance
-	}
-
-	u.RawQuery = query.Encode()
-	connectionString := u.String()
+	connectionString := fromDBConfToConnectionString(conf)
 
 	// Init Goose
 	err := goose.SetDialect(conf.Driver)
@@ -242,6 +212,43 @@ func Open(conf DBConfig, fsys fs.FS) (*DB, int64, error) {
 	}
 
 	return &DB{DB: db, conf: conf, fsys: fsys}, currentVersion, nil
+}
+
+// Convert the database configuration to connection string
+func fromDBConfToConnectionString(conf DBConfig) string {
+	query := url.Values{}
+
+	u := &url.URL{
+		Scheme: conf.Driver,
+		Host:   conf.Server,
+	}
+	if conf.Port != 0 {
+		u.Host += fmt.Sprintf(":%d", conf.Port)
+	}
+
+	if conf.Driver == string(MSSQLDriver) {
+		query.Add("database", conf.DB)
+		CurrentDriver = MSSQLDriver
+	}
+
+	if conf.Driver == string(PostgresDriver) {
+		query.Add("dbname", conf.DB)
+		query.Add("sslmode", "disable")
+		CurrentDriver = PostgresDriver
+	}
+
+	if conf.User != "" {
+		u.User = url.UserPassword(conf.User, conf.Password)
+	}
+
+	if conf.Instance != "" {
+		u.Path = conf.Instance
+	}
+
+	u.RawQuery = query.Encode()
+	connectionString := u.String()
+
+	return connectionString
 }
 
 // Up runs the migrations up to the latest version
