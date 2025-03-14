@@ -54,6 +54,16 @@ func (f FilterMap[T]) AddFilters(q *[]T, attribute string, filters ...string) er
 	return nil
 }
 
+// AddHavingFilters parses the filters and adds them to the given list of query mods as Having clauses
+func (f FilterMap[T]) AddHavingFilters(query *[]T, attribute string, data ...string) (err error) {
+	qmods, _, _, _, err := f.ParseFilters(attribute, true, data...)
+	if err != nil {
+		return err
+	}
+	*query = append(*query, qmods...)
+	return nil
+}
+
 // ParseFilters parses the filters and returns the query mods, raw queries, operators and values
 func (f FilterMap[T]) ParseFilters(attribute string, having bool, filters ...string) ([]T, []string, []string, []interface{}, error) {
 	return parseFilters(f.filterer, f.fields, attribute, having, filters...)
