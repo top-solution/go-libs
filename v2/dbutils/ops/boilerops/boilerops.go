@@ -1,6 +1,7 @@
 package boilerops
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/lib/pq"
@@ -50,4 +51,26 @@ func (b *BoilFilterer) ParseFilter(filter, alias string, op string, rawValue str
 
 func (b *BoilFilterer) ParseSorting(sortList []string) (QueryMod, error) {
 	return OrderBy(strings.Join(sortList, ", ")), nil
+}
+
+// ParsePagination generates a Limit+Offset QueryMod slice given an user-inputted offset and limit
+func ParsePagination(offset *int, limit *int) (res []QueryMod, err error) {
+	res = []QueryMod{}
+	if (limit != nil && offset == nil) || (limit == nil && offset != nil) {
+		return nil, errors.New("invalid pagination parameters")
+	}
+	if limit != nil && offset != nil {
+		res = append(res, Limit(*limit), Offset(*offset))
+	}
+	return res, nil
+}
+
+// AddPagination adds the parsed pagination filters to the query
+func AddPagination(query *[]QueryMod, offset *int, limit *int) (err error) {
+	mods, err := ParsePagination(offset, limit)
+	if err != nil {
+		return err
+	}
+	*query = append(*query, mods...)
+	return nil
 }
