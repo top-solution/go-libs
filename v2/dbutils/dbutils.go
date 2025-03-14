@@ -79,9 +79,16 @@ type DBConfig struct {
 	Instance string `yaml:"instance" conf:"help:The db instance"`
 }
 
-// TransactionCtx is the same as Transaction, but either embeds the transaction in the given context
-// or uses an existing one from the context
-func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx context.Context, tx *sql.Tx) error) (err error) {
+// Transaction either embeds the transaction in the given context or uses an existing one from the context
+func Transaction(ctx context.Context, db BeginnerExecutor, txFunc func(ctx context.Context, tx *sql.Tx) error) error {
+	_, err := TransactionResult(ctx, db, func(ctx context.Context, tx *sql.Tx) (any, error) {
+		return nil, txFunc(ctx, tx)
+	})
+	return err
+}
+
+// TransactionResult is the same as Transaction, but it returns a result along with the error
+func TransactionResult[T any](ctx context.Context, db BeginnerExecutor, txFunc func(ctx context.Context, tx *sql.Tx) (T, error)) (result T, err error) {
 	tx := Tx(ctx)
 	if tx != nil {
 		return txFunc(ctx, tx)
@@ -120,8 +127,7 @@ func TransactionCtx(ctx context.Context, db BeginnerExecutor, txFunc func(ctx co
 			err = tx.Commit() // err is nil; if Commit returns an error, update err
 		}
 	}()
-	err = txFunc(ctx, tx)
-	return err
+	return txFunc(ctx, tx)
 }
 
 // WithTx enriches a context with a transaction
