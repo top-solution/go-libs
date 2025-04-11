@@ -1,8 +1,6 @@
 module github.com/top-solution/go-libs/v2
 
-go 1.23
-
-toolchain go1.24rc2
+go 1.24
 
 require (
 	github.com/ardanlabs/conf/v3 v3.4.0
