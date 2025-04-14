@@ -43,9 +43,14 @@ func DisableWithPrefix(prefix string) Option {
 // WARNING: using this means you need to handle the authorization yourself
 func Passthrough() Option {
 	return func(h http.Handler, w http.ResponseWriter, r *http.Request, _ Claims, _ bool) (bool, error) {
-		ctx := context.WithValue(r.Context(), RequestSubjectKey, Anonymous)
-		h.ServeHTTP(w, r.WithContext(ctx))
-		return false, nil
+		_, err := getToken(r)
+		// Allow requests without authentication to pass through
+		if err != nil {
+			ctx := context.WithValue(r.Context(), RequestSubjectKey, Anonymous)
+			h.ServeHTTP(w, r.WithContext(ctx))
+			return false, nil
+		}
+		return true, nil
 	}
 }
 
@@ -78,20 +83,13 @@ func RequestJWT(keys *JWT, opts ...Option) func(http.Handler) http.Handler {
 				}
 			}
 
-			token := r.Header["Authorization"]
-			if len(token) == 0 {
-				http.Error(w, "missing authorization header", http.StatusUnauthorized)
-				return
-			}
-			tok := token[0]
-			if !strings.HasPrefix(strings.ToLower(tok), "bearer ") {
-				http.Error(w, "invalid authorization header", http.StatusUnauthorized)
+			token, err := getToken(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusForbidden)
 				return
 			}
 
-			tok = strings.Split(tok, " ")[1]
-
-			t, err := keys.ParseAndValidateToken(tok)
+			t, err := keys.ParseAndValidateToken(token)
 			if err != nil {
 				if errors.Is(err, ErrInvalidToken) {
 					http.Error(w, err.Error(), http.StatusForbidden)
@@ -102,7 +100,7 @@ func RequestJWT(keys *JWT, opts ...Option) func(http.Handler) http.Handler {
 
 			ctx = context.WithValue(ctx, RequestSubjectKey, t.Subject)
 			ctx = context.WithValue(ctx, RequestClaimsKey, t)
-			ctx = context.WithValue(ctx, RequestTokenKey, token[0])
+			ctx = context.WithValue(ctx, RequestTokenKey, token)
 
 			// Run the options after authentication
 			for _, opt := range opts {
@@ -142,4 +140,17 @@ func TokenFromContext(ctx context.Context) string {
 		return elem
 	}
 	return ""
+}
+
+func getToken(r *http.Request) (string, error) {
+	token := r.Header["Authorization"]
+	if len(token) == 0 {
+		return "", errors.New("missing authorization header")
+	}
+	tok := token[0]
+	if !strings.HasPrefix(strings.ToLower(tok), "bearer ") {
+		return "", errors.New("invalid authorization header")
+	}
+
+	return strings.Split(tok, " ")[1], nil
 }
