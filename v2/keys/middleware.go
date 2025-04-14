@@ -16,8 +16,11 @@ const RequestSubjectKey = contextKey("subject")
 const RequestClaimsKey = contextKey("claims")
 const RequestTokenKey = contextKey("token")
 
+const Anonymous = "Anonymous"
+
+// EnableWithClaims is a middleware that enables the JWT authentication for a specific path prefix
 func EnableWithPrefix(prefix string) Option {
-	return func(h http.Handler, w http.ResponseWriter, r *http.Request, claims Claims, beforeAuth bool) (bool, error) {
+	return func(h http.Handler, w http.ResponseWriter, r *http.Request, _ Claims, beforeAuth bool) (bool, error) {
 		if beforeAuth && !strings.HasPrefix(r.URL.Path, prefix) {
 			h.ServeHTTP(w, r)
 			return false, nil
@@ -26,13 +29,23 @@ func EnableWithPrefix(prefix string) Option {
 	}
 }
 
+// DisableWithClaims is a middleware that disables the JWT authentication for a specific path prefix
 func DisableWithPrefix(prefix string) Option {
-	return func(h http.Handler, w http.ResponseWriter, r *http.Request, claims Claims, beforeAuth bool) (bool, error) {
+	return func(h http.Handler, w http.ResponseWriter, r *http.Request, _ Claims, beforeAuth bool) (bool, error) {
 		if beforeAuth && strings.HasPrefix(r.URL.Path, prefix) {
-			h.ServeHTTP(w, r)
 			return false, nil
 		}
 		return true, nil
+	}
+}
+
+// Passthrough is a middleware that allows requests without authentication to pass through, setting the subject to Anonymous
+// WARNING: using this means you need to handle the authorization yourself
+func Passthrough() Option {
+	return func(h http.Handler, w http.ResponseWriter, r *http.Request, _ Claims, _ bool) (bool, error) {
+		ctx := context.WithValue(r.Context(), RequestSubjectKey, Anonymous)
+		h.ServeHTTP(w, r.WithContext(ctx))
+		return false, nil
 	}
 }
 
@@ -113,7 +126,7 @@ func SubjectFromContext(ctx context.Context) string {
 		return elem
 	}
 
-	return "Anonymous"
+	return Anonymous
 }
 
 func ClaimsFromContext(ctx context.Context) Claims {
