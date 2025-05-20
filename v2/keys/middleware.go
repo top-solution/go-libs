@@ -79,6 +79,7 @@ func RequestJWT(keys *JWT, opts ...Option) func(http.Handler) http.Handler {
 					return
 				}
 				if !cont {
+					h.ServeHTTP(w, r.WithContext(ctx))
 					return
 				}
 			}
