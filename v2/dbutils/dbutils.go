@@ -250,6 +250,7 @@ func fromDBConfToConnectionString(conf DBConfig) string {
 			CurrentDriver = PostgresDriver
 		default:
 			return ""
+	}
 
 	if conf.User != "" {
 		u.User = url.UserPassword(conf.User, conf.Password)
