@@ -164,12 +164,15 @@ type DB struct {
 // It expects a fs.FS in order to fetch and run the DB migrations
 // If you don't need them, just pass nil instead
 func Open(conf DBConfig, fsys fs.FS) (*DB, int64, error) {
-
 	if conf.Driver == "" {
-		return nil, 0, errors.New("no SQL driver specified: please use one of [mssql,sqlserver,postgres]")
+		return nil, 0, errors.New("no SQL driver specified: please use one of [mssql,postgres]")
 	}
 
 	connectionString := fromDBConfToConnectionString(conf)
+
+	if connectionString == "" {
+		return nil, 0, errors.New("unsupported driver: "+conf.Driver)
+	}
 
 	// Init Goose
 	err := goose.SetDialect(conf.Driver)
@@ -200,7 +203,12 @@ func Open(conf DBConfig, fsys fs.FS) (*DB, int64, error) {
 
 	// DB should be ready, run migrations if needed
 	if conf.Migrations.Run {
-		db, err := sql.Open(conf.Driver, connectionString)
+		// Goose wants to use the "sqlserver" driver, never "mssql"
+		driver := conf.Driver
+		if driver == "mssql" {
+			driver = "sqlserver"
+		}
+		db, err := sql.Open(driver, connectionString)
 		if err != nil {
 			return nil, -1, fmt.Errorf("open db for migrations: %w", err)
 		}
@@ -232,15 +240,16 @@ func fromDBConfToConnectionString(conf DBConfig) string {
 		u.Host += fmt.Sprintf(":%d", conf.Port)
 	}
 
-	if conf.Driver == string(MSSQLDriver) {
-		query.Add("database", conf.DB)
-		CurrentDriver = MSSQLDriver
-	}
-
-	if conf.Driver == string(PostgresDriver) {
-		query.Add("dbname", conf.DB)
-		query.Add("sslmode", "disable")
-		CurrentDriver = PostgresDriver
+	switch conf.Driver {
+		case string(MSSQLDriver):
+			query.Add("database", conf.DB)
+			CurrentDriver = MSSQLDriver
+		case string(PostgresDriver):
+			query.Add("dbname", conf.DB)
+			query.Add("sslmode", "disable")
+			CurrentDriver = PostgresDriver
+		default:
+			return ""
 	}
 
 	if conf.User != "" {
