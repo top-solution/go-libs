@@ -50,7 +50,7 @@ func NewEmailManager(config EmailConfig, fs fs.ReadFileFS) *EmailManager {
 // SendEmails will send email
 func (e *EmailManager) SendEmail(emails ...*Email) error {
 	for _, em := range emails {
-		if stringContains(e.config.Whitelist, em.To) {
+		if len(e.config.Whitelist) == 0 || stringContains(e.config.Whitelist, em.To) {
 			err := e.send(em)
 			if err != nil {
 				return fmt.Errorf("cannot send email: %w", err)
