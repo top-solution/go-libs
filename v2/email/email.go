@@ -85,14 +85,14 @@ func (e *EmailManager) send(em *Email) error {
 }
 
 // getMailBody returns the body of the email created by building the specified template
-func (e *EmailManager) getMailBody(filepath string, templateName string, mailBuilder any, static fs.ReadFileFS) (string, error) {
+func (e *EmailManager) getMailBody(filepath string, templateName string, mailBuilder any) (string, error) {
 	var tmpl *template.Template
 
 	if cached, ok := e.templates[templateName]; ok {
 		tmpl = cached
 	} else {
 		var err error
-		tmpl, err = template.New(templateName).ParseFS(static, filepath)
+		tmpl, err = template.New(templateName).ParseFS(e.fs, filepath)
 		if err != nil {
 			return "", fmt.Errorf("parse template: %w", err)
 		}
