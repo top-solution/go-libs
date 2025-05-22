@@ -47,7 +47,7 @@ func NewEmailManager(config EmailConfig, fs fs.ReadFileFS) *EmailManager {
 	}
 }
 
-// SendEmails will send email
+// SendEmail will send emails to the specified recipients, as long as they are in the whitelist (if any)
 func (e *EmailManager) SendEmail(emails ...*Email) error {
 	for _, em := range emails {
 		if len(e.config.Whitelist) == 0 || stringContains(e.config.Whitelist, em.To) {
@@ -60,7 +60,6 @@ func (e *EmailManager) SendEmail(emails ...*Email) error {
 	return nil
 }
 
-// send configure and send the email
 func (e *EmailManager) send(em *Email) error {
 	// Replace placeholders
 	body, err := e.getMailBody(e.config.TemplateDirectory+"/"+em.Template, em.Template, em.BodyBuilder, e.fs)
