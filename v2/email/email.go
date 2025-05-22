@@ -34,12 +34,12 @@ type EmailConfig struct {
 }
 
 type EmailManager struct {
-	config    *EmailConfig
+	config    EmailConfig
 	fs        fs.ReadFileFS
 	templates map[string]*template.Template
 }
 
-func NewEmailManager(config *EmailConfig, fs fs.ReadFileFS) *EmailManager {
+func NewEmailManager(config EmailConfig, fs fs.ReadFileFS) *EmailManager {
 	return &EmailManager{
 		config:    config,
 		fs:        fs,

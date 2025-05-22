@@ -84,7 +84,7 @@ func TestEmailManager_getMailBody(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &EmailManager{
-				config: &EmailConfig{
+				config: EmailConfig{
 					CacheTemplates: tt.cacheTemplates,
 				},
 				fs:        mockFS,
@@ -121,7 +121,7 @@ func TestEmailManager_getMailBody_Caching(t *testing.T) {
 
 	t.Run("With caching enabled", func(t *testing.T) {
 		e := &EmailManager{
-			config: &EmailConfig{
+			config: EmailConfig{
 				CacheTemplates: true,
 			},
 			fs:        mockFS,
@@ -146,7 +146,7 @@ func TestEmailManager_getMailBody_Caching(t *testing.T) {
 
 	t.Run("With caching disabled", func(t *testing.T) {
 		e := &EmailManager{
-			config: &EmailConfig{
+			config: EmailConfig{
 				CacheTemplates: false,
 			},
 			fs:        mockFS,
@@ -178,7 +178,7 @@ func TestEmailManager_getMailBody_UseCachedTemplate(t *testing.T) {
 	}
 
 	e := &EmailManager{
-		config: &EmailConfig{
+		config: EmailConfig{
 			CacheTemplates: true,
 		},
 		fs: mockFS,
