@@ -62,7 +62,7 @@ func (e *EmailManager) SendEmail(emails ...*Email) error {
 
 func (e *EmailManager) send(em *Email) error {
 	// Replace placeholders
-	body, err := e.getMailBody(e.config.TemplateDirectory+"/"+em.Template, em.Template, em.BodyBuilder, e.fs)
+	body, err := e.getMailBody(e.config.TemplateDirectory+"/"+em.Template, em.Template, em.BodyBuilder)
 	if err != nil {
 		return fmt.Errorf("get mail body: %w", err)
 	}
