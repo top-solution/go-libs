@@ -1,4 +1,4 @@
-module github.com/top-solution/go-libs/email/v2
+module github.com/top-solution/go-libs/v2/email
 
 go 1.24.1
 
