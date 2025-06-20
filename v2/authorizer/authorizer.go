@@ -103,6 +103,7 @@ func (c *InSetCondition) Fulfills(ctx context.Context, value interface{}, _ *lad
 // LadonAuthorizer is a Ladon-backed Authorizer
 type LadonAuthorizer struct {
 	*ladon.Ladon
+	ladon.Policies
 }
 
 // NewLadon returns a new Ladon-backed authorizer
@@ -143,6 +144,7 @@ func (l *LadonAuthorizer) LoadPoliciesFromJSONS(root string, fsys fs.FS) error {
 		if err != nil {
 			return fmt.Errorf("unmarshal %s: %w", path, err)
 		}
+		l.Policies = append(l.Policies, &policy)
 
 		// Create policy
 		err = l.Manager.Create(context.TODO(), &policy)
