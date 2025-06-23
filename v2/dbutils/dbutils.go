@@ -6,9 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"net/url"
-	"runtime/debug"
 	"time"
 
 	"github.com/pressly/goose/v3"
@@ -106,18 +104,9 @@ func TransactionResult[T any](ctx context.Context, db BeginnerExecutor, txFunc f
 		if p := recover(); p != nil {
 			rollbackErr := tx.Rollback()
 			if rollbackErr != nil {
-				panic(p)
+				panic(rollbackErr)
 			}
-			switch x := p.(type) {
-			case string:
-				err = errors.New(x)
-			case error:
-				err = fmt.Errorf("transaction failed: %w", x)
-			default:
-				err = fmt.Errorf("transaction failed for unknown panic: %v", x)
-			}
-			slog.Error("transaction failed", "err", err, "stack", string(debug.Stack()))
-			err = fmt.Errorf("%v", err)
+			panic(p) // re-raise panic after Rollback
 		} else if err != nil {
 			rollbackErr := tx.Rollback() // err is non-nil; don't change it
 			if rollbackErr != nil {
@@ -171,7 +160,7 @@ func Open(conf DBConfig, fsys fs.FS) (*DB, int64, error) {
 	connectionString := fromDBConfToConnectionString(conf)
 
 	if connectionString == "" {
-		return nil, 0, errors.New("unsupported driver: "+conf.Driver)
+		return nil, 0, errors.New("unsupported driver: " + conf.Driver)
 	}
 
 	// Init Goose
@@ -241,15 +230,15 @@ func fromDBConfToConnectionString(conf DBConfig) string {
 	}
 
 	switch conf.Driver {
-		case string(MSSQLDriver):
-			query.Add("database", conf.DB)
-			CurrentDriver = MSSQLDriver
-		case string(PostgresDriver):
-			query.Add("dbname", conf.DB)
-			query.Add("sslmode", "disable")
-			CurrentDriver = PostgresDriver
-		default:
-			return ""
+	case string(MSSQLDriver):
+		query.Add("database", conf.DB)
+		CurrentDriver = MSSQLDriver
+	case string(PostgresDriver):
+		query.Add("dbname", conf.DB)
+		query.Add("sslmode", "disable")
+		CurrentDriver = PostgresDriver
+	default:
+		return ""
 	}
 
 	if conf.User != "" {
