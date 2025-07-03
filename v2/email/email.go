@@ -14,7 +14,8 @@ import (
 // Email contains the data to send an email
 type Email struct {
 	From        string
-	To          string
+	To          []string
+	CC          []string
 	Subject     string
 	BodyBuilder any
 	Template    string
@@ -50,11 +51,28 @@ func NewEmailManager(config EmailConfig, fs fs.ReadFileFS) *EmailManager {
 // SendEmail will send emails to the specified recipients, as long as they are in the whitelist (if any)
 func (e *EmailManager) SendEmail(emails ...*Email) error {
 	for _, em := range emails {
-		if len(e.config.Whitelist) == 0 || stringContains(e.config.Whitelist, em.To) {
-			err := e.send(em)
-			if err != nil {
-				return fmt.Errorf("cannot send email: %w", err)
+		toRecipients := em.To
+		ccRecipients := em.CC
+		em.To = []string{}
+		em.CC = []string{}
+		for _, to := range toRecipients {
+			if len(e.config.Whitelist) == 0 || stringContains(e.config.Whitelist, to) {
+				em.To = append(em.To, to)
 			}
+		}
+
+		for _, cc := range ccRecipients {
+			if len(e.config.Whitelist) == 0 || stringContains(e.config.Whitelist, cc) {
+				em.CC = append(em.CC, cc)
+			}
+		}
+		if len(em.To) == 0 {
+			continue
+		}
+
+		err := e.send(em)
+		if err != nil {
+			return fmt.Errorf("cannot send email: %w", err)
 		}
 	}
 	return nil
@@ -70,9 +88,13 @@ func (e *EmailManager) send(em *Email) error {
 	// Prepare the email with the data
 	m := gomail.NewMessage()
 	m.SetHeader("From", em.From)
-	m.SetHeader("To", em.To)
+	m.SetHeader("To", em.To...)
 	m.SetHeader("Subject", em.Subject)
 	m.SetBody("text/html", body)
+
+	if len(em.CC) > 0 {
+		m.SetHeader("Cc", em.CC...)
+	}
 
 	// Open the connection
 	d := gomail.NewDialer(e.config.Host, e.config.SMTPPort, e.config.SMTPUser, e.config.Password)
