@@ -46,7 +46,9 @@ func RegisterEndpoint[I, O any](api huma.API, resource string, op huma.Operation
 	}
 	op.Metadata[RESOURCE] = resource
 	op.Tags = append(op.Tags, kebabToTitleCase(resource))
-	op.Summary = kebabToTitleCase(op.OperationID)
+	if op.Summary == "" {
+		op.Summary = kebabToTitleCase(op.OperationID)
+	}
 
 	huma.Register(api, op, func(ctx context.Context, input *I) (*O, error) {
 		output, err := handler(ctx, input)
