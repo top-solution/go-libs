@@ -27,6 +27,20 @@ func TestConnectionString(t *testing.T) {
 		},
 
 		{
+			name: "postgres with schema",
+			conf: DBConfig{
+				Driver:   "postgres",
+				Server:   "localhost",
+				Port:     5432,
+				User:     "user",
+				Password: "password",
+				DB:       "databasename",
+				Schema:   "myschema",
+			},
+			expectedString: "postgres://user:password@localhost:5432?dbname=databasename&options=-c+search_path%3Dmyschema&sslmode=disable",
+		},
+
+		{
 			name: "mssql",
 			conf: DBConfig{
 				Driver:   "sqlserver",
@@ -62,7 +76,6 @@ func TestConnectionString(t *testing.T) {
 			},
 			expectedString: "sqlserver://user:password@MSSQLSERVER/INSTANCE?database=databasename",
 		},
-
 		{
 			name: "mssql with instance and special characters",
 			conf: DBConfig{
