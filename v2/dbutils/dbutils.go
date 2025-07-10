@@ -75,6 +75,8 @@ type DBConfig struct {
 	} `yaml:"migrations"`
 	// If connecting to an instance instead of a port
 	Instance string `yaml:"instance" conf:"help:The db instance"`
+	// Schema is the db schema
+	Schema string `yaml:"schema" conf:"help:The db schema"`
 }
 
 // Transaction either embeds the transaction in the given context or uses an existing one from the context
@@ -236,6 +238,9 @@ func fromDBConfToConnectionString(conf DBConfig) string {
 	case string(PostgresDriver):
 		query.Add("dbname", conf.DB)
 		query.Add("sslmode", "disable")
+		if conf.Schema != "" {
+			query.Add("options", "-c search_path="+conf.Schema)
+		}
 		CurrentDriver = PostgresDriver
 	default:
 		return ""
