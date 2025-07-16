@@ -202,6 +202,7 @@ func (d *DB) Migrate() (err error) {
 	}
 
 	goose.SetBaseFS(d.fsys)
+	goose.SetTableName(goose.DefaultTablename)
 
 	// Goose wants to use the "sqlserver" driver, never "mssql"
 	driver := d.conf.Driver
