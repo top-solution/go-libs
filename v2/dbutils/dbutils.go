@@ -185,22 +185,27 @@ func Open(conf DBConfig, fsys fs.FS) (db *DB, err error) {
 	db = &DB{DB: sqlDB, conf: conf, fsys: fsys}
 	// DB should be ready, run migrations if needed
 	if conf.Migrations.Run {
-		err = db.Migrate()
-		if err != nil {
-			return nil, fmt.Errorf("cannote run db migrations: %w", err)
+		if fsys != nil {
+			err = db.Migrate(fsys)
+			if err != nil {
+				return nil, fmt.Errorf("cannote run db migrations: %w", err)
+			}
 		}
 	}
 
 	return db, nil
 }
 
-func (d *DB) Migrate() (err error) {
+func (d *DB) Migrate(fsys fs.FS) (err error) {
+	if !d.conf.Migrations.Run {
+		return nil
+	}
 	// Init Goose
 	err = goose.SetDialect(d.conf.Driver)
 	if err != nil {
 		return fmt.Errorf("set migrations dialect: %w", err)
 	}
-
+	d.fsys = fsys
 	goose.SetBaseFS(d.fsys)
 	goose.SetTableName(goose.DefaultTablename)
 
@@ -275,7 +280,7 @@ func (d *DB) Up() error {
 // Version return the current DB version
 func (d *DB) Version() (int64, error) {
 	if d.fsys == nil {
-		return -1, errors.New("can't get current version: no file system was passed to Open()")
+		return -1, nil
 	}
 	return goose.GetDBVersion(d.DB)
 }
