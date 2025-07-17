@@ -154,7 +154,7 @@ type DB struct {
 // Open opens a database connection given a config struct
 // It expects a fs.FS in order to fetch and run the DB migrations
 // If you don't need them, just pass nil instead
-func Open(conf DBConfig, fsys fs.FS, runMigrations bool) (db *DB, err error) {
+func Open(conf DBConfig, fsys fs.FS) (db *DB, err error) {
 	if conf.Driver == "" {
 		return nil, errors.New("no SQL driver specified: please use one of [mssql,postgres]")
 	}
@@ -184,7 +184,7 @@ func Open(conf DBConfig, fsys fs.FS, runMigrations bool) (db *DB, err error) {
 
 	db = &DB{DB: sqlDB, conf: conf, fsys: fsys}
 	// DB should be ready, run migrations if needed
-	if conf.Migrations.Run && runMigrations {
+	if conf.Migrations.Run {
 		err = db.Migrate()
 		if err != nil {
 			return nil, fmt.Errorf("cannote run db migrations: %w", err)
