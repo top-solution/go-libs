@@ -104,6 +104,7 @@ func (c *InSetCondition) Fulfills(ctx context.Context, value interface{}, _ *lad
 type LadonAuthorizer struct {
 	*ladon.Ladon
 	ladon.Policies
+	FS fs.FS
 }
 
 // NewLadon returns a new Ladon-backed authorizer
@@ -124,6 +125,7 @@ func (l *LadonAuthorizer) IsUserAllowed(ctx context.Context, r *ladon.Request) e
 }
 
 func (l *LadonAuthorizer) LoadPoliciesFromJSONS(root string, fsys fs.FS) error {
+	l.FS = fsys
 	return fs.WalkDir(fsys, root, func(path string, info fs.DirEntry, err error) error {
 		if filepath.Ext(path) != ".json" {
 			return nil
