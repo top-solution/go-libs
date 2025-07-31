@@ -556,3 +556,134 @@ func TestGenerator_ParseImportSpec(t *testing.T) {
 		})
 	}
 }
+func TestGenerator_SortField(t *testing.T) {
+	tests := []struct {
+		name       string
+		content    string
+		expectSort bool
+	}{
+		{
+			name: "struct with Sort field",
+			content: `package testpkg
+
+// db:filter
+type TestRequest struct {
+	// db:filter column_name
+	Field string
+	Sort  []string ` + "`query:\"sort\"`" + `
+}`,
+			expectSort: true,
+		},
+		{
+			name: "struct without Sort field",
+			content: `package testpkg
+
+// db:filter
+type TestRequest struct {
+	// db:filter column_name
+	Field string
+}`,
+			expectSort: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			testFile := filepath.Join(tmpDir, "test.go")
+			err := os.WriteFile(testFile, []byte(tt.content), 0644)
+			require.NoError(t, err)
+
+			generator := NewGenerator("testpkg", tmpDir, "bob")
+			structs, err := generator.parseFile(testFile)
+			require.NoError(t, err)
+
+			require.Len(t, structs, 1)
+			assert.Equal(t, tt.expectSort, structs[0].HasSort)
+		})
+	}
+}
+
+func TestGenerator_GenerateWithSorting(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test input file with Sort field
+	testContent := `package requests
+
+// db:filter
+type ListUsersRequest struct {
+	// db:filter bob_gen.ColumnNames.Users.Name
+	Name string ` + "`query:\"name\"`" + `
+	Sort []string ` + "`query:\"sort\"`" + `
+}`
+
+	inputFile := filepath.Join(tmpDir, "requests.go")
+	err := os.WriteFile(inputFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("requests", tmpDir, "bob")
+
+	err = generator.GenerateFromFile(inputFile)
+	require.NoError(t, err)
+
+	// Check that output file was created
+	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
+	_, err = os.Stat(outputFile)
+	require.NoError(t, err)
+
+	// Read and verify generated content
+	generated, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	generatedStr := string(generated)
+
+	// Check for expected content
+	assert.Contains(t, generatedStr, "package requests")
+	assert.Contains(t, generatedStr, "func (l *ListUsersRequest) AddFilters")
+	assert.Contains(t, generatedStr, "func (l *ListUsersRequest) AddSorting")
+	assert.Contains(t, generatedStr, `"errors"`)
+	assert.Contains(t, generatedStr, "filterer.ParseSorting(l.Sort)")
+	assert.Contains(t, generatedStr, "errors.Is(err, ops.ErrEmptySort)")
+}
+
+func TestGenerator_GenerateWithoutSorting(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test input file without Sort field
+	testContent := `package requests
+
+// db:filter
+type ListUsersRequest struct {
+	// db:filter bob_gen.ColumnNames.Users.Name
+	Name string ` + "`query:\"name\"`" + `
+}`
+
+	inputFile := filepath.Join(tmpDir, "requests.go")
+	err := os.WriteFile(inputFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("requests", tmpDir, "bob")
+
+	err = generator.GenerateFromFile(inputFile)
+	require.NoError(t, err)
+
+	// Check that output file was created
+	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
+	_, err = os.Stat(outputFile)
+	require.NoError(t, err)
+
+	// Read and verify generated content
+	generated, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	generatedStr := string(generated)
+
+	// Check for expected content
+	assert.Contains(t, generatedStr, "package requests")
+	assert.Contains(t, generatedStr, "func (l *ListUsersRequest) AddFilters")
+	// Should NOT contain AddSorting function
+	assert.NotContains(t, generatedStr, "func (l *ListUsersRequest) AddSorting")
+	assert.NotContains(t, generatedStr, "ParseSorting")
+	// Should not import errors if no sorting
+	assert.NotContains(t, generatedStr, `"errors"`)
+}
