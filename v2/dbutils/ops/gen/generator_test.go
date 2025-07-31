@@ -434,3 +434,125 @@ type TestRequest struct {
 		})
 	}
 }
+func TestGenerator_ImportComments(t *testing.T) {
+	testContent := `package testpkg
+
+// db:filter
+// db:filter import "fmt"
+// db:filter import "time"
+// db:filter import github.com/example/pkg
+// db:filter import json "encoding/json"
+// db:filter import ctx "context"
+type TestRequest struct {
+	// db:filter column_name
+	Field string
+}`
+
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.go")
+	err := os.WriteFile(testFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("testpkg", tmpDir, "bob")
+	structs, err := generator.parseFile(testFile)
+	require.NoError(t, err)
+
+	require.Len(t, structs, 1)
+	testStruct := structs[0]
+
+	// Should have 5 imports
+	assert.Len(t, testStruct.Imports, 5)
+	assert.Contains(t, testStruct.Imports, `"fmt"`)
+	assert.Contains(t, testStruct.Imports, `"time"`)
+	assert.Contains(t, testStruct.Imports, `"github.com/example/pkg"`)
+	assert.Contains(t, testStruct.Imports, `json "encoding/json"`)
+	assert.Contains(t, testStruct.Imports, `ctx "context"`)
+}
+
+func TestGenerator_GenerateWithImports(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test input file with imports
+	testContent := `package requests
+
+// db:filter
+// db:filter import "fmt"
+// db:filter import "encoding/json"
+type ListUsersRequest struct {
+	// db:filter bob_gen.ColumnNames.Users.Name
+	Name string ` + "`query:\"name\"`" + `
+}`
+
+	inputFile := filepath.Join(tmpDir, "requests.go")
+	err := os.WriteFile(inputFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("requests", tmpDir, "bob")
+
+	err = generator.GenerateFromFile(inputFile)
+	require.NoError(t, err)
+
+	// Check that output file was created
+	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
+	_, err = os.Stat(outputFile)
+	require.NoError(t, err)
+
+	// Read and verify generated content
+	generated, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	generatedStr := string(generated)
+
+	// Check for expected imports
+	assert.Contains(t, generatedStr, `"fmt"`)
+	assert.Contains(t, generatedStr, `"encoding/json"`)
+	assert.Contains(t, generatedStr, "package requests")
+	assert.Contains(t, generatedStr, "func (l *ListUsersRequest) AddFilters")
+}
+func TestGenerator_ParseImportSpec(t *testing.T) {
+	generator := NewGenerator("test", ".", "bob")
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "quoted package",
+			input:    `"fmt"`,
+			expected: `"fmt"`,
+		},
+		{
+			name:     "unquoted package",
+			input:    `fmt`,
+			expected: `"fmt"`,
+		},
+		{
+			name:     "alias with quoted package",
+			input:    `json "encoding/json"`,
+			expected: `json "encoding/json"`,
+		},
+		{
+			name:     "alias with unquoted package",
+			input:    `ctx context`,
+			expected: `ctx "context"`,
+		},
+		{
+			name:     "complex package path",
+			input:    `github.com/example/pkg`,
+			expected: `"github.com/example/pkg"`,
+		},
+		{
+			name:     "alias with complex package path",
+			input:    `pkg github.com/example/pkg`,
+			expected: `pkg "github.com/example/pkg"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := generator.parseImportSpec(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
