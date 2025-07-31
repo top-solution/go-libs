@@ -19,6 +19,14 @@ func NewBobFilterMap(fields map[string]string) ops.FilterMap[bob.Mod[*dialect.Se
 type BobFilterer struct{}
 
 func (b *BobFilterer) ParseFilter(filter, alias string, op string, rawValue string, having bool) (bob.Mod[*dialect.SelectQuery], string, interface{}, error) {
+	return parseFilter(filter, alias, op, rawValue, having)
+}
+
+func (b *BobFilterer) ParseSorting(sortList []string) (bob.Mod[*dialect.SelectQuery], error) {
+	return sm.OrderBy(strings.Join(sortList, ", ")), nil
+}
+
+func parseFilter(filter, alias string, op string, rawValue string, having bool) (bob.Mod[*dialect.SelectQuery], string, interface{}, error) {
 	if having {
 		if ops.IsUnaryOp(op) {
 			q := strings.ReplaceAll(filter, "{}", alias)
@@ -55,8 +63,4 @@ func (b *BobFilterer) ParseFilter(filter, alias string, op string, rawValue stri
 
 	q := strings.ReplaceAll(filter, "{}", alias)
 	return sm.Where(psql.Raw(q, rawValue)), q, rawValue, nil
-}
-
-func (b *BobFilterer) ParseSorting(sortList []string) (bob.Mod[*dialect.SelectQuery], error) {
-	return sm.OrderBy(strings.Join(sortList, ", ")), nil
 }

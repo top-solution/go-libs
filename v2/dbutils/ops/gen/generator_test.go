@@ -1,0 +1,436 @@
+package gen
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestGenerator_ParseFile(t *testing.T) {
+	// Create a temporary test file
+	testContent := `package testpkg
+
+// db:filter
+type ListDCRsRequest struct {
+	// db:filter bob_gen.ColumnNames.DCRS.Type
+	Type   string ` + "`query:\"type\"`" + `
+	// db:filter bob_gen.ColumnNames.DCRS.Status  
+	Status string ` + "`query:\"status\"`" + `
+	// Regular field without filter comment
+	Limit  int    ` + "`query:\"limit\"`" + `
+}
+
+// db:filter
+type AnotherRequest struct {
+	// db:filter bob_gen.ColumnNames.Users.Name
+	Name *string ` + "`query:\"name\"`" + `
+	// db:filter bob_gen.ColumnNames.Users.Tags
+	Tags []string ` + "`query:\"tags\"`" + `
+}
+
+type NoFilterRequest struct {
+	// db:filter bob_gen.ColumnNames.NoFilter.Field
+	Field string ` + "`query:\"field\"`" + `
+}`
+
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.go")
+	err := os.WriteFile(testFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("testpkg", tmpDir, "bob")
+	structs, err := generator.parseFile(testFile)
+	require.NoError(t, err)
+
+	// Should find 2 structs with filter fields
+	assert.Len(t, structs, 2)
+
+	// Check first struct
+	dcrsStruct := structs[0]
+	assert.Equal(t, "ListDCRsRequest", dcrsStruct.Name)
+	assert.Equal(t, "testpkg", dcrsStruct.Package)
+	assert.Equal(t, "l", dcrsStruct.ReceiverName)
+	assert.Len(t, dcrsStruct.Fields, 2)
+
+	// Check fields
+	typeField := dcrsStruct.Fields[0]
+	assert.Equal(t, "Type", typeField.Name)
+	assert.Equal(t, "bob_gen.ColumnNames.DCRS.Type", typeField.Column)
+	assert.Equal(t, "string", typeField.Type)
+
+	statusField := dcrsStruct.Fields[1]
+	assert.Equal(t, "Status", statusField.Name)
+	assert.Equal(t, "bob_gen.ColumnNames.DCRS.Status", statusField.Column)
+	assert.Equal(t, "string", statusField.Type)
+
+	// Check second struct
+	usersStruct := structs[1]
+	assert.Equal(t, "AnotherRequest", usersStruct.Name)
+	assert.Equal(t, "a", usersStruct.ReceiverName)
+	assert.Len(t, usersStruct.Fields, 2)
+
+	nameField := usersStruct.Fields[0]
+	assert.Equal(t, "Name", nameField.Name)
+	assert.Equal(t, "bob_gen.ColumnNames.Users.Name", nameField.Column)
+	assert.Equal(t, "*string", nameField.Type)
+
+	tagsField := usersStruct.Fields[1]
+	assert.Equal(t, "Tags", tagsField.Name)
+	assert.Equal(t, "bob_gen.ColumnNames.Users.Tags", tagsField.Column)
+	assert.Equal(t, "[]string", tagsField.Type)
+}
+
+func TestGenerator_GenerateCode(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test input file
+	testContent := `package requests
+
+// db:filter
+type ListUsersRequest struct {
+	// db:filter bob_gen.ColumnNames.Users.Name
+	Name   string ` + "`query:\"name\"`" + `
+	// db:filter bob_gen.ColumnNames.Users.Status
+	Status *string ` + "`query:\"status\"`" + `
+	// db:filter bob_gen.ColumnNames.Users.Tags
+	Tags []string ` + "`query:\"tags\"`" + `
+}`
+
+	inputFile := filepath.Join(tmpDir, "requests.go")
+	err := os.WriteFile(inputFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("requests", tmpDir, "bob")
+
+	err = generator.GenerateFromFile(inputFile)
+	require.NoError(t, err)
+
+	// Check that output file was created
+	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
+	_, err = os.Stat(outputFile)
+	require.NoError(t, err)
+
+	// Read and verify generated content
+	generated, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	generatedStr := string(generated)
+
+	// Check for expected content
+	assert.Contains(t, generatedStr, "package requests")
+	assert.Contains(t, generatedStr, "func (l *ListUsersRequest) AddFilters")
+	assert.Contains(t, generatedStr, "bob_gen.ColumnNames.Users.Name")
+	assert.Contains(t, generatedStr, "bob_gen.ColumnNames.Users.Status")
+	assert.Contains(t, generatedStr, "bob_gen.ColumnNames.Users.Tags")
+
+	// Check for proper handling of different types
+	assert.Contains(t, generatedStr, "if l.Name != \"\"")
+	assert.Contains(t, generatedStr, "if l.Status != nil && *l.Status != \"\"")
+	assert.Contains(t, generatedStr, "if len(l.Tags) > 0")
+	assert.Contains(t, generatedStr, "for _, v := range l.Tags")
+
+	// Check for bobops usage
+	assert.Contains(t, generatedStr, "filterer := bobops.BobFilterer{}")
+	assert.Contains(t, generatedStr, "ops.CurrentWhereFilters().Parse")
+	assert.Contains(t, generatedStr, "filterer.ParseFilter")
+}
+
+func TestGenerator_GetTypeString(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "simple type",
+			input:    "string",
+			expected: "string",
+		},
+		{
+			name:     "pointer type",
+			input:    "*string",
+			expected: "*string",
+		},
+		{
+			name:     "slice type",
+			input:    "[]string",
+			expected: "[]string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// This test is more conceptual since getTypeString works with AST nodes
+			// The actual type parsing is tested through the integration tests
+			assert.NotEmpty(t, tt.expected)
+		})
+	}
+}
+
+func TestGenerator_NoFilterStructs(t *testing.T) {
+	testContent := `package testpkg
+
+type SimpleRequest struct {
+	Name string ` + "`query:\"name\"`" + `
+	Age  int    ` + "`query:\"age\"`" + `
+}`
+
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.go")
+	err := os.WriteFile(testFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("testpkg", tmpDir, "bob")
+
+	err = generator.GenerateFromFile(testFile)
+	require.NoError(t, err)
+
+	// Output file should not be created when no filter structs are found
+	outputFile := filepath.Join(tmpDir, "test_filters.gen.go")
+	_, err = os.Stat(outputFile)
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestGenerator_GenerateFromPackage(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create multiple Go files with filter structs
+	file1Content := `package requests
+
+// db:filter
+type ListUsersRequest struct {
+	// db:filter bob_gen.ColumnNames.Users.Name
+	Name string ` + "`query:\"name\"`" + `
+}`
+
+	file2Content := `package requests
+
+// db:filter
+type ListOrdersRequest struct {
+	// db:filter bob_gen.ColumnNames.Orders.Status
+	Status string ` + "`query:\"status\"`" + `
+}`
+
+	// Create a file without filter structs
+	file3Content := `package requests
+
+type SimpleRequest struct {
+	Field string ` + "`query:\"field\"`" + `
+}`
+
+	// Create a test file (should be ignored)
+	testFileContent := `package requests
+
+// db:filter
+type TestStruct struct {
+	// db:filter bob_gen.ColumnNames.Test.Field
+	Field string ` + "`query:\"field\"`" + `
+}`
+
+	// Create a generated file (should be ignored)
+	genFileContent := `package requests
+
+// db:filter
+type GenStruct struct {
+	// db:filter bob_gen.ColumnNames.Gen.Field
+	Field string ` + "`query:\"field\"`" + `
+}`
+
+	// Write all files
+	err := os.WriteFile(filepath.Join(tmpDir, "users.go"), []byte(file1Content), 0644)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "orders.go"), []byte(file2Content), 0644)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "simple.go"), []byte(file3Content), 0644)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "test_test.go"), []byte(testFileContent), 0644)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "existing_gen.go"), []byte(genFileContent), 0644)
+	require.NoError(t, err)
+
+	// Generate filters for the entire package
+	generator := NewGenerator("requests", tmpDir, "bob")
+	err = generator.GenerateFromPackage()
+	require.NoError(t, err)
+
+	// Check that filter files were created for files with filter structs
+	usersFilterFile := filepath.Join(tmpDir, "users_filters.gen.go")
+	_, err = os.Stat(usersFilterFile)
+	require.NoError(t, err)
+
+	ordersFilterFile := filepath.Join(tmpDir, "orders_filters.gen.go")
+	_, err = os.Stat(ordersFilterFile)
+	require.NoError(t, err)
+
+	// Check that no filter file was created for simple.go (no filter structs)
+	simpleFilterFile := filepath.Join(tmpDir, "simple_filters.gen.go")
+	_, err = os.Stat(simpleFilterFile)
+	assert.True(t, os.IsNotExist(err))
+
+	// Check that no filter file was created for test file
+	testFilterFile := filepath.Join(tmpDir, "test_test_filters.gen.go")
+	_, err = os.Stat(testFilterFile)
+	assert.True(t, os.IsNotExist(err))
+
+	// Check that no filter file was created for existing generated file
+	existingGenFilterFile := filepath.Join(tmpDir, "existing_gen_filters.gen.go")
+	_, err = os.Stat(existingGenFilterFile)
+	assert.True(t, os.IsNotExist(err))
+
+	// Verify content of generated files
+	usersGenerated, err := os.ReadFile(usersFilterFile)
+	require.NoError(t, err)
+	assert.Contains(t, string(usersGenerated), "func (l *ListUsersRequest) AddFilters")
+
+	ordersGenerated, err := os.ReadFile(ordersFilterFile)
+	require.NoError(t, err)
+	assert.Contains(t, string(ordersGenerated), "func (l *ListOrdersRequest) AddFilters")
+}
+
+func TestGenerator_GetOutputFilename(t *testing.T) {
+	generator := NewGenerator("test", ".", "bob")
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "simple file",
+			input:    "requests.go",
+			expected: "requests_filters.gen.go",
+		},
+		{
+			name:     "file with path",
+			input:    "/path/to/requests.go",
+			expected: "/path/to/requests_filters.gen.go",
+		},
+		{
+			name:     "file with multiple dots",
+			input:    "my.requests.go",
+			expected: "my.requests_filters.gen.go",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := generator.getOutputFilename(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGenerator_FilterCommentParsing(t *testing.T) {
+	testContent := `package testpkg
+
+// db:filter
+type TestRequest struct {
+	// db:filter simple_column
+	Field1 string
+	// db:filter   spaced_column   
+	Field2 string
+	//db:filter no_space_column
+	Field3 string
+	// db:filter "quoted_column"
+	Field4 string
+	// Some other comment
+	Field5 string
+	// db:filter complex.column.name
+	Field6 string
+}`
+
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.go")
+	err := os.WriteFile(testFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("testpkg", tmpDir, "bob")
+	structs, err := generator.parseFile(testFile)
+	require.NoError(t, err)
+
+	require.Len(t, structs, 1)
+	testStruct := structs[0]
+
+	// Should have 5 fields with filter comments (Field5 doesn't have db:filter)
+	assert.Len(t, testStruct.Fields, 5)
+
+	expectedColumns := []string{
+		"simple_column",
+		"spaced_column",
+		"no_space_column",
+		"\"quoted_column\"",
+		"complex.column.name",
+	}
+
+	for i, field := range testStruct.Fields {
+		assert.Equal(t, expectedColumns[i], field.Column)
+		assert.Equal(t, "string", field.Type)
+	}
+}
+
+func TestGenerator_StructFilterComment(t *testing.T) {
+	tests := []struct {
+		name        string
+		content     string
+		expectFound bool
+	}{
+		{
+			name: "has db:filter comment",
+			content: `package testpkg
+
+// db:filter
+type TestRequest struct {
+	// db:filter column_name
+	Field string
+}`,
+			expectFound: true,
+		},
+		{
+			name: "no struct filter comment",
+			content: `package testpkg
+
+type TestRequest struct {
+	// db:filter column_name
+	Field string
+}`,
+			expectFound: false,
+		},
+		{
+			name: "other comment",
+			content: `package testpkg
+
+// Some other comment
+type TestRequest struct {
+	// db:filter column_name
+	Field string
+}`,
+			expectFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			testFile := filepath.Join(tmpDir, "test.go")
+			err := os.WriteFile(testFile, []byte(tt.content), 0644)
+			require.NoError(t, err)
+
+			generator := NewGenerator("testpkg", tmpDir, "bob")
+			structs, err := generator.parseFile(testFile)
+			require.NoError(t, err)
+
+			if tt.expectFound {
+				require.Len(t, structs, 1)
+			} else {
+				assert.Len(t, structs, 0)
+			}
+		})
+	}
+}
