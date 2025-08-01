@@ -35,11 +35,11 @@ func NullPtr[T any](v T) *sql.Null[T] {
 }
 
 // NullPtrFromPtr returns a pointer to a sql.Null[T] based on the provided *T.
-// If the input pointer is nil, it returns nil, meaning "unset".
+// If the input pointer is nil, it returns &sql.Null[T]{} “unset” Null[T].
 // Otherwise, it returns &sql.Null[T]{V: *v, Valid: true}.
 func NullPtrFromPtr[T any](v *T) *sql.Null[T] {
 	if v == nil {
-		return nil
+		return &sql.Null[T]{}
 	}
 	return &sql.Null[T]{
 		V:     *v,
