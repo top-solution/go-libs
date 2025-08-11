@@ -10,4 +10,5 @@ type TestStruct struct {
 	Test2 *string `query:"test2"`
 	// db:filter "EEEI"
 	Test3 []string `query:"test3"`
+	Sort  []string `query:"sort"`
 }

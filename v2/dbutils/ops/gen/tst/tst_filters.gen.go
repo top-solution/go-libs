@@ -3,6 +3,7 @@
 package tst
 
 import (
+	"errors"
 	"github.com/top-solution/go-libs/v2/dbutils/ops"
 	
 	"github.com/stephenafamo/bob"
@@ -11,6 +12,7 @@ import (
 	
 	"fmt"
 )
+
 
 // AddFilters adds database filters based on the struct fields with db:filter comments
 func (t *TestStruct) AddFilters(q *[]bob.Mod[*dialect.SelectQuery]) error {
@@ -64,4 +66,20 @@ func (t *TestStruct) AddFilters(q *[]bob.Mod[*dialect.SelectQuery]) error {
 
 	return nil
 }
+
+// AddSorting adds the result of ParseSorting to a given query
+func (t *TestStruct) AddSorting(query *[]bob.Mod[*dialect.SelectQuery]) error {
+	filterer := bobops.BobFilterer{}
+	mod, err := filterer.ParseSorting(t.Sort)
+	if err != nil {
+		// If no sort parameters are passed, simply return the query as-is
+		if errors.Is(err, ops.ErrEmptySort) {
+			return nil
+		}
+		return err
+	}
+	*query = append(*query, mod)
+	return nil
+}
+
 
