@@ -27,7 +27,7 @@ type StructInfo struct {
 	Fields       []FilterField
 	ReceiverName string
 	Imports      []string // Additional imports specified in comments
-	HasSort      bool     // Whether the struct has a Sort field
+	SortField    string   // The field to sort by, if specified
 }
 
 // Generator handles the code generation for filter methods
@@ -128,12 +128,13 @@ func (g *Generator) parseFile(filename string) ([]StructInfo, error) {
 					if typeSpec, ok := spec.(*ast.TypeSpec); ok {
 						if structType, ok := typeSpec.Type.(*ast.StructType); ok {
 							// Check for struct-level db:filter comment in the GenDecl doc
-							hasFilter, imports := g.parseFilterComments(x.Doc)
+							hasFilter, imports, sortField := g.parseFilterComments(x.Doc)
 							if hasFilter {
 								structInfo := g.parseStruct(typeSpec.Name.Name, structType)
 								if len(structInfo.Fields) > 0 {
 									structInfo.Package = node.Name.Name
 									structInfo.Imports = imports
+									structInfo.SortField = sortField
 									structs = append(structs, structInfo)
 								}
 							}
@@ -149,16 +150,18 @@ func (g *Generator) parseFile(filename string) ([]StructInfo, error) {
 }
 
 // parseFilterComments checks if the struct has a db:filter comment and extracts imports
-func (g *Generator) parseFilterComments(doc *ast.CommentGroup) (bool, []string) {
+func (g *Generator) parseFilterComments(doc *ast.CommentGroup) (bool, []string, string) {
 	if doc == nil {
-		return false, nil
+		return false, nil, ""
 	}
 
 	structFilterRegex := regexp.MustCompile(`//\s*db:filter\s*$`)
 	importRegex := regexp.MustCompile(`//\s*db:filter\s+import\s+(.+)`)
+	sortRegex := regexp.MustCompile(`//\s*db:filter\s+sortField\s+(.+)`)
 
 	hasFilter := false
 	var imports []string
+	var sortField string
 
 	for _, comment := range doc.List {
 		if structFilterRegex.MatchString(comment.Text) {
@@ -166,10 +169,13 @@ func (g *Generator) parseFilterComments(doc *ast.CommentGroup) (bool, []string) 
 		} else if matches := importRegex.FindStringSubmatch(comment.Text); len(matches) > 1 {
 			importSpec := strings.TrimSpace(matches[1])
 			imports = append(imports, g.parseImportSpec(importSpec))
+		} else if matches := sortRegex.FindStringSubmatch(comment.Text); len(matches) > 1 {
+			sortField = strings.TrimSpace(matches[1])
 		}
+
 	}
 
-	return hasFilter, imports
+	return hasFilter, imports, sortField
 }
 
 // parseImportSpec parses import specifications with optional aliases
@@ -210,23 +216,9 @@ func (g *Generator) parseStruct(name string, structType *ast.StructType) StructI
 		Name:         name,
 		ReceiverName: strings.ToLower(name[:1]),
 		Fields:       []FilterField{},
-		HasSort:      false,
 	}
 
 	for _, field := range structType.Fields.List {
-		// Check for Sort field (can be embedded or named)
-		if field.Names == nil {
-			// Embedded field - check if it's a type that might contain Sort
-			// This handles struct embedding
-			continue
-		}
-
-		for _, fieldName := range field.Names {
-			if fieldName.Name == "Sort" {
-				info.HasSort = true
-			}
-		}
-
 		if field.Doc == nil {
 			continue
 		}
@@ -312,7 +304,7 @@ func (g *Generator) generateCode(structs []StructInfo, outputFile string) error 
 	// Check if any struct has sorting
 	hasSortingStructs := false
 	for _, s := range structs {
-		if s.HasSort {
+		if s.SortField != "" {
 			hasSortingStructs = true
 			break
 		}
@@ -407,11 +399,11 @@ func ({{.ReceiverName}} *{{.Name}}) AddFilters(q {{if eq $lib "bob"}}*[]bob.Mod[
 
 	return nil
 }
-{{if .HasSort}}
+{{if ne .SortField ""}}
 // AddSorting adds the result of ParseSorting to a given query
 func ({{.ReceiverName}} *{{.Name}}) AddSorting(query {{if eq $lib "bob"}}*[]bob.Mod[*dialect.SelectQuery]{{else if eq $lib "boiler"}}*[]qm.QueryMod{{end}}) error {
 	{{if eq $lib "bob"}}filterer := bobops.BobFilterer{}{{else if eq $lib "boiler"}}filterer := boilerops.BoilFilterer{}{{end}}
-	mod, err := filterer.ParseSorting({{$receiver}}.Sort)
+	mod, err := filterer.ParseSorting({{$receiver}}.{{.SortField}})
 	if err != nil {
 		// If no sort parameters are passed, simply return the query as-is
 		if errors.Is(err, ops.ErrEmptySort) {
