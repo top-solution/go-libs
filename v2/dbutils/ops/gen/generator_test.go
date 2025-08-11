@@ -561,9 +561,24 @@ func TestGenerator_SortField(t *testing.T) {
 		name       string
 		content    string
 		expectSort bool
+		sortField  string
 	}{
 		{
-			name: "struct with Sort field",
+			name: "struct with sortField comment",
+			content: `package testpkg
+
+// db:filter
+// db:filter sortField Sort
+type TestRequest struct {
+	// db:filter column_name
+	Field string
+	Sort  []string ` + "`query:\"sort\"`" + `
+}`,
+			expectSort: true,
+			sortField:  "Sort",
+		},
+		{
+			name: "struct without sortField comment",
 			content: `package testpkg
 
 // db:filter
@@ -572,18 +587,22 @@ type TestRequest struct {
 	Field string
 	Sort  []string ` + "`query:\"sort\"`" + `
 }`,
-			expectSort: true,
+			expectSort: false,
+			sortField:  "",
 		},
 		{
-			name: "struct without Sort field",
+			name: "struct with different sortField name",
 			content: `package testpkg
 
 // db:filter
+// db:filter sortField OrderBy
 type TestRequest struct {
 	// db:filter column_name
 	Field string
+	OrderBy []string ` + "`query:\"order_by\"`" + `
 }`,
-			expectSort: false,
+			expectSort: true,
+			sortField:  "OrderBy",
 		},
 	}
 
@@ -599,7 +618,12 @@ type TestRequest struct {
 			require.NoError(t, err)
 
 			require.Len(t, structs, 1)
-			assert.Equal(t, tt.expectSort, structs[0].HasSort)
+			if tt.expectSort {
+				assert.Equal(t, tt.sortField, structs[0].SortField)
+				assert.NotEmpty(t, structs[0].SortField)
+			} else {
+				assert.Empty(t, structs[0].SortField)
+			}
 		})
 	}
 }
@@ -607,10 +631,11 @@ type TestRequest struct {
 func TestGenerator_GenerateWithSorting(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create test input file with Sort field
+	// Create test input file with sortField comment
 	testContent := `package requests
 
 // db:filter
+// db:filter sortField Sort
 type ListUsersRequest struct {
 	// db:filter bob_gen.ColumnNames.Users.Name
 	Name string ` + "`query:\"name\"`" + `
@@ -644,12 +669,18 @@ type ListUsersRequest struct {
 	assert.Contains(t, generatedStr, `"errors"`)
 	assert.Contains(t, generatedStr, "filterer.ParseSorting(l.Sort)")
 	assert.Contains(t, generatedStr, "errors.Is(err, ops.ErrEmptySort)")
+	
+	// Check for proper imports structure
+	assert.Contains(t, generatedStr, `"github.com/top-solution/go-libs/v2/dbutils/ops"`)
+	assert.Contains(t, generatedStr, `"github.com/stephenafamo/bob"`)
+	assert.Contains(t, generatedStr, `"github.com/stephenafamo/bob/dialect/psql/dialect"`)
+	assert.Contains(t, generatedStr, `"github.com/top-solution/go-libs/v2/dbutils/ops/bobops"`)
 }
 
 func TestGenerator_GenerateWithoutSorting(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create test input file without Sort field
+	// Create test input file without sortField comment
 	testContent := `package requests
 
 // db:filter
@@ -686,4 +717,10 @@ type ListUsersRequest struct {
 	assert.NotContains(t, generatedStr, "ParseSorting")
 	// Should not import errors if no sorting
 	assert.NotContains(t, generatedStr, `"errors"`)
+	
+	// Check for proper imports structure (without errors)
+	assert.Contains(t, generatedStr, `"github.com/top-solution/go-libs/v2/dbutils/ops"`)
+	assert.Contains(t, generatedStr, `"github.com/stephenafamo/bob"`)
+	assert.Contains(t, generatedStr, `"github.com/stephenafamo/bob/dialect/psql/dialect"`)
+	assert.Contains(t, generatedStr, `"github.com/top-solution/go-libs/v2/dbutils/ops/bobops"`)
 }

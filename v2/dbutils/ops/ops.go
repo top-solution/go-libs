@@ -187,6 +187,7 @@ var postgresWhereFilters = WhereFilters{
 }
 
 func CurrentWhereFilters() WhereFilters {
+	// FIXME: This can't work if using two connections with different drivers
 	if dbutils.CurrentDriver == dbutils.MSSQLDriver {
 		return msSQLWhereFilters
 	}
