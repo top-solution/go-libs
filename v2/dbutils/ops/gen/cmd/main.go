@@ -63,8 +63,6 @@ func main() {
 			}
 		}
 
-		fmt.Printf("Processing package: %s (path: %s)\n", packageName, path)
-
 		// Create generator and process the package
 		generator := gen.NewGenerator(packageName, path, filterType)
 		if err := generator.GenerateFromPackage(); err != nil {
@@ -92,7 +90,7 @@ func hasRelevantGoFiles(dir string) (bool, error) {
 	for _, file := range files {
 		filename := filepath.Base(file)
 		// Skip test files and generated files
-		if !strings.HasSuffix(filename, "_test.go") && !strings.Contains(filename, "_gen.go") {
+		if !strings.HasSuffix(filename, "_test.go") && !strings.Contains(filename, "_gen.go") && !strings.Contains(filename, ".gen.go") {
 			return true, nil
 		}
 	}

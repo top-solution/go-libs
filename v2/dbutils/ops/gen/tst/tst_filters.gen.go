@@ -3,13 +3,13 @@
 package tst
 
 import (
-	
 	"github.com/top-solution/go-libs/v2/dbutils/ops"
 	
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
 	"github.com/top-solution/go-libs/v2/dbutils/ops/bobops"
 	
+	"fmt"
 )
 
 // AddFilters adds database filters based on the struct fields with db:filter comments
@@ -36,7 +36,7 @@ func (t *TestStruct) AddFilters(q *[]bob.Mod[*dialect.SelectQuery]) error {
 			return err
 		}
 
-		qmod, _, _, err := filterer.ParseFilter(cond, "EEE", op, rawValue, false)
+		qmod, _, _, err := filterer.ParseFilter(cond, fmt.Sprintf("heee"), op, rawValue, false)
 		if err != nil {
 			return err
 		}
