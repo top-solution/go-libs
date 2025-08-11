@@ -49,6 +49,11 @@ func NullPtrFromPtr[T any](v *T) *sql.Null[T] {
 
 // isZero checks whether v is the zero value of its type.
 func isZero[T any](v T) bool {
+	// Special case for bool: always consider it non-zero (i.e., always valid)
+	switch any(v).(type) {
+	case bool:
+		return false
+	}
 	var zero T
 	return reflect.DeepEqual(v, zero)
 }
