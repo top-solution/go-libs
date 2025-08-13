@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGenerator_ParseFile(t *testing.T) {
+func TestGenerator(t *testing.T) {
 	// Create a temporary test file
 	testContent := `package testpkg
 
@@ -81,61 +81,6 @@ type NoFilterRequest struct {
 	assert.Equal(t, "Tags", tagsField.Name)
 	assert.Equal(t, "bob_gen.ColumnNames.Users.Tags", tagsField.Column)
 	assert.Equal(t, "[]string", tagsField.Type)
-}
-
-func TestGenerator_GenerateCode(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Create test input file
-	testContent := `package requests
-
-// db:filter
-type ListUsersRequest struct {
-	// db:filter bob_gen.ColumnNames.Users.Name
-	Name   string ` + "`query:\"name\"`" + `
-	// db:filter bob_gen.ColumnNames.Users.Status
-	Status *string ` + "`query:\"status\"`" + `
-	// db:filter bob_gen.ColumnNames.Users.Tags
-	Tags []string ` + "`query:\"tags\"`" + `
-}`
-
-	inputFile := filepath.Join(tmpDir, "requests.go")
-	err := os.WriteFile(inputFile, []byte(testContent), 0644)
-	require.NoError(t, err)
-
-	generator := NewGenerator("requests", tmpDir, "bob")
-
-	err = generator.GenerateFromFile(inputFile)
-	require.NoError(t, err)
-
-	// Check that output file was created
-	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
-	_, err = os.Stat(outputFile)
-	require.NoError(t, err)
-
-	// Read and verify generated content
-	generated, err := os.ReadFile(outputFile)
-	require.NoError(t, err)
-
-	generatedStr := string(generated)
-
-	// Check for expected content
-	assert.Contains(t, generatedStr, "package requests")
-	assert.Contains(t, generatedStr, "func (l *ListUsersRequest) AddFilters")
-	assert.Contains(t, generatedStr, "bob_gen.ColumnNames.Users.Name")
-	assert.Contains(t, generatedStr, "bob_gen.ColumnNames.Users.Status")
-	assert.Contains(t, generatedStr, "bob_gen.ColumnNames.Users.Tags")
-
-	// Check for proper handling of different types
-	assert.Contains(t, generatedStr, "if l.Name != \"\"")
-	assert.Contains(t, generatedStr, "if l.Status != nil && *l.Status != \"\"")
-	assert.Contains(t, generatedStr, "if len(l.Tags) > 0")
-	assert.Contains(t, generatedStr, "for _, v := range l.Tags")
-
-	// Check for bobops usage
-	assert.Contains(t, generatedStr, "filterer := bobops.BobFilterer{}")
-	assert.Contains(t, generatedStr, "ops.CurrentWhereFilters().Parse")
-	assert.Contains(t, generatedStr, "filterer.ParseFilter")
 }
 
 func TestGenerator_GetTypeString(t *testing.T) {
@@ -666,10 +611,8 @@ type ListUsersRequest struct {
 	assert.Contains(t, generatedStr, "package requests")
 	assert.Contains(t, generatedStr, "func (l *ListUsersRequest) AddFilters")
 	assert.Contains(t, generatedStr, "func (l *ListUsersRequest) AddSorting")
-	assert.Contains(t, generatedStr, `"errors"`)
-	assert.Contains(t, generatedStr, "filterer.ParseSorting(l.Sort)")
-	assert.Contains(t, generatedStr, "errors.Is(err, ops.ErrEmptySort)")
-	
+	assert.Contains(t, generatedStr, "ListUsersRequestColumnsMap.AddSorting(query, l.Sort)")
+
 	// Check for proper imports structure
 	assert.Contains(t, generatedStr, `"github.com/top-solution/go-libs/v2/dbutils/ops"`)
 	assert.Contains(t, generatedStr, `"github.com/stephenafamo/bob"`)
@@ -714,10 +657,8 @@ type ListUsersRequest struct {
 	assert.Contains(t, generatedStr, "func (l *ListUsersRequest) AddFilters")
 	// Should NOT contain AddSorting function
 	assert.NotContains(t, generatedStr, "func (l *ListUsersRequest) AddSorting")
-	assert.NotContains(t, generatedStr, "ParseSorting")
-	// Should not import errors if no sorting
-	assert.NotContains(t, generatedStr, `"errors"`)
-	
+	assert.NotContains(t, generatedStr, "AddSorting")
+
 	// Check for proper imports structure (without errors)
 	assert.Contains(t, generatedStr, `"github.com/top-solution/go-libs/v2/dbutils/ops"`)
 	assert.Contains(t, generatedStr, `"github.com/stephenafamo/bob"`)

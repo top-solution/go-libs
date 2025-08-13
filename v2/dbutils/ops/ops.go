@@ -30,7 +30,7 @@ type Filterer[T any] interface {
 // FilterMap is a helper struct to parse filters into a slice of query mods
 // Query Mods can be from different query builders
 type FilterMap[T any] struct {
-	filterer Filterer[T]
+	Filterer Filterer[T]
 	fields   map[string]string
 }
 
@@ -39,14 +39,14 @@ type FilterMap[T any] struct {
 // If you need to use this with bob, see bobops package
 func NewFilterMap[T any](fields map[string]string, f Filterer[T]) FilterMap[T] {
 	return FilterMap[T]{
-		filterer: f,
+		Filterer: f,
 		fields:   fields,
 	}
 }
 
 // AddFilters parses the filters and adds them to the given list of query mods
 func (f FilterMap[T]) AddFilters(q *[]T, attribute string, filters ...string) error {
-	filter, _, _, _, err := parseFilters(f.filterer, f.fields, attribute, false, filters...)
+	filter, _, _, _, err := parseFilters(f.Filterer, f.fields, attribute, false, filters...)
 	if err != nil {
 		return fmt.Errorf("error parsing filters: %w", err)
 	}
@@ -66,7 +66,7 @@ func (f FilterMap[T]) AddHavingFilters(query *[]T, attribute string, data ...str
 
 // ParseFilters parses the filters and returns the query mods, raw queries, operators and values
 func (f FilterMap[T]) ParseFilters(attribute string, having bool, filters ...string) ([]T, []string, []string, []interface{}, error) {
-	return parseFilters(f.filterer, f.fields, attribute, having, filters...)
+	return parseFilters(f.Filterer, f.fields, attribute, having, filters...)
 }
 
 // ParseSorting generates an OrderBy QueryMod starting from a given list of user-inputted values and an attribute->column map
@@ -87,7 +87,7 @@ func (f FilterMap[T]) ParseSorting(sort []string) (T, error) {
 		}
 		sortList = append(sortList, f.fields[elem]+direction)
 	}
-	return f.filterer.ParseSorting(sortList)
+	return f.Filterer.ParseSorting(sortList)
 }
 
 // AddSorting adds the result of ParseSorting to a given query
