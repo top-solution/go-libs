@@ -30,7 +30,7 @@ type Filterer[T any] interface {
 // FilterMap is a helper struct to parse filters into a slice of query mods
 // Query Mods can be from different query builders
 type FilterMap[T any] struct {
-	filterer Filterer[T]
+	Filterer Filterer[T]
 	fields   map[string]string
 }
 
@@ -39,14 +39,14 @@ type FilterMap[T any] struct {
 // If you need to use this with bob, see bobops package
 func NewFilterMap[T any](fields map[string]string, f Filterer[T]) FilterMap[T] {
 	return FilterMap[T]{
-		filterer: f,
+		Filterer: f,
 		fields:   fields,
 	}
 }
 
 // AddFilters parses the filters and adds them to the given list of query mods
 func (f FilterMap[T]) AddFilters(q *[]T, attribute string, filters ...string) error {
-	filter, _, _, _, err := parseFilters(f.filterer, f.fields, attribute, false, filters...)
+	filter, _, _, _, err := parseFilters(f.Filterer, f.fields, attribute, false, filters...)
 	if err != nil {
 		return fmt.Errorf("error parsing filters: %w", err)
 	}
@@ -66,7 +66,7 @@ func (f FilterMap[T]) AddHavingFilters(query *[]T, attribute string, data ...str
 
 // ParseFilters parses the filters and returns the query mods, raw queries, operators and values
 func (f FilterMap[T]) ParseFilters(attribute string, having bool, filters ...string) ([]T, []string, []string, []interface{}, error) {
-	return parseFilters(f.filterer, f.fields, attribute, having, filters...)
+	return parseFilters(f.Filterer, f.fields, attribute, having, filters...)
 }
 
 // ParseSorting generates an OrderBy QueryMod starting from a given list of user-inputted values and an attribute->column map
@@ -87,7 +87,7 @@ func (f FilterMap[T]) ParseSorting(sort []string) (T, error) {
 		}
 		sortList = append(sortList, f.fields[elem]+direction)
 	}
-	return f.filterer.ParseSorting(sortList)
+	return f.Filterer.ParseSorting(sortList)
 }
 
 // AddSorting adds the result of ParseSorting to a given query
@@ -104,36 +104,22 @@ func (f FilterMap[T]) AddSorting(query *[]T, sort []string) (err error) {
 	return nil
 }
 
-func parseFilters[T any](filterer Filterer[T], f map[string]string, attribute string, having bool, filters ...string) ([]T, []string, []string, []interface{}, error) {
+func parseFilters[T any](filterer Filterer[T], f map[string]string, attribute string, having bool, filters ...string) ([]T, []string, []string, []any, error) {
 	var qmods []T
 	var rawQueries []string
 	var ops []string
-	var vals []interface{}
+	var vals []any
 
 	if _, ok := f[attribute]; !ok {
 		return nil, nil, nil, nil, fmt.Errorf("attribute %s not found", attribute)
 	}
 
-	driverFilters := postgresWhereFilters
-	if dbutils.CurrentDriver == dbutils.MSSQLDriver {
-		driverFilters = msSQLWhereFilters
-	}
-
 	for _, filter := range filters {
-		spl := strings.SplitN(filter, ":", 2)
-		op := spl[0]
-		rawValue := ""
-		if len(spl) < 2 {
-			if !IsUnaryOp(op) {
-				return nil, nil, nil, nil, fmt.Errorf("operation %s is not valid", op)
-			}
-		} else {
-			rawValue = spl[1]
+		op, cond, rawValue, err := CurrentWhereFilters().Parse(filter)
+		if err != nil {
+			return nil, nil, nil, nil, err
 		}
-		if _, ok := driverFilters[op]; !ok {
-			return nil, nil, nil, nil, fmt.Errorf("operation %s is not implemented", op)
-		}
-		qmod, raw, val, err := filterer.ParseFilter(driverFilters[op], f[attribute], op, rawValue, having)
+		qmod, raw, val, err := filterer.ParseFilter(cond, f[attribute], op, rawValue, having)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -145,7 +131,28 @@ func parseFilters[T any](filterer Filterer[T], f map[string]string, attribute st
 	return qmods, rawQueries, ops, vals, nil
 }
 
-var msSQLWhereFilters = map[string]string{
+type WhereFilters map[string]string
+
+func (w WhereFilters) Parse(filter string) (op string, cond string, val string, err error) {
+	spl := strings.SplitN(filter, ":", 2)
+	op = spl[0]
+	rawValue := ""
+	if len(spl) < 2 {
+		if !IsUnaryOp(op) {
+			return "", "", "", fmt.Errorf("operation %s is not valid", op)
+		}
+	} else {
+		rawValue = spl[1]
+	}
+	if _, ok := w[op]; !ok {
+		return "", "", "", fmt.Errorf("operation %s is not implemented", op)
+	}
+
+	return op, w[op], rawValue, nil
+
+}
+
+var msSQLWhereFilters = WhereFilters{
 	"eq":         "{} = ?",
 	"neq":        "{} != ?",
 	"like":       "{} LIKE ? ESCAPE '_'",
@@ -162,7 +169,7 @@ var msSQLWhereFilters = map[string]string{
 	"isNotEmpty": "coalesce({},'') != ''",
 }
 
-var postgresWhereFilters = map[string]string{
+var postgresWhereFilters = WhereFilters{
 	"eq":         "{} = ?",
 	"neq":        "{} != ?",
 	"like":       "{} ILIKE ? ESCAPE '_'",
@@ -177,4 +184,12 @@ var postgresWhereFilters = map[string]string{
 	"notIn":      "{} != ALL(?)",
 	"isEmpty":    "coalesce({},'') = ''",
 	"isNotEmpty": "coalesce({},'') != ''",
+}
+
+func CurrentWhereFilters() WhereFilters {
+	// FIXME: This can't work if using two connections with different drivers
+	if dbutils.CurrentDriver == dbutils.MSSQLDriver {
+		return msSQLWhereFilters
+	}
+	return postgresWhereFilters
 }
