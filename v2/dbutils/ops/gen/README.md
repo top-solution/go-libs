@@ -17,6 +17,9 @@ Instead of manually creating `FilterMap` instances and calling `AddFilters` for 
 Add `db:filter` comments to fields that should be filterable:
 
 ```go
+// db:filter
+// db:filter import "fmt"   <----- this is optional, to add custom imports in the generated file. Can be repeated.
+// db:filter sortField Sort <----- this is optional, to also generate a sorting func
 type ListDCRsRequest struct {
     // db:filter bob_gen.ColumnNames.DCRS.Type
     Type   string `query:"type"`
