@@ -10,7 +10,7 @@ A collection of Go utility packages for common development tasks.
 - **email** - SMTP email sending with HTML template support
 - **fs** - Filesystem utilities including fallback filesystem for SPAs
 - **humautils** - Utilities for Huma API framework including response helpers and endpoint registration
-- **keys** - JWT token handling and middleware
+- **keys** - JWT token handling and middleware (NOTE: this is being deprecated)
 - **logging** - Structured logging configuration with multiple output formats
 - **middlewares** - HTTP middleware collection (CORS, caching, etc.)
 - **policies** - Role-based access control integration
