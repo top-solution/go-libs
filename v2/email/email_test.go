@@ -91,7 +91,7 @@ func TestEmailManager_getMailBody(t *testing.T) {
 				templates: make(map[string]*template.Template),
 			}
 
-			body, err := e.getMailBody(tt.filePath, tt.templateName, tt.mailBuilder, mockFS)
+			body, err := e.getMailBody(tt.filePath, tt.templateName, tt.mailBuilder)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -129,19 +129,13 @@ func TestEmailManager_getMailBody_Caching(t *testing.T) {
 		}
 
 		// First call should parse and cache the template
-		body1, err := e.getMailBody(filePath, templateName, mailData, mockFS)
+		body1, err := e.getMailBody(filePath, templateName, mailData)
 		assert.NoError(t, err)
 		assert.Equal(t, "<html><body>Hello, Test User!</body></html>", body1)
 
 		// Verify template was cached
 		_, cached := e.templates[templateName]
 		assert.True(t, cached, "Template should be cached")
-
-		// Create a broken file system to verify it uses cache
-		brokenFS := fstest.MapFS{}
-		body2, err := e.getMailBody(filePath, templateName, mailData, brokenFS)
-		assert.NoError(t, err)
-		assert.Equal(t, "<html><body>Hello, Test User!</body></html>", body2)
 	})
 
 	t.Run("With caching disabled", func(t *testing.T) {
@@ -154,7 +148,7 @@ func TestEmailManager_getMailBody_Caching(t *testing.T) {
 		}
 
 		// First call should parse but not cache the template
-		body, err := e.getMailBody(filePath, templateName, mailData, mockFS)
+		body, err := e.getMailBody(filePath, templateName, mailData)
 		assert.NoError(t, err)
 		assert.Equal(t, "<html><body>Hello, Test User!</body></html>", body)
 
@@ -187,7 +181,7 @@ func TestEmailManager_getMailBody_UseCachedTemplate(t *testing.T) {
 		},
 	}
 
-	body, err := e.getMailBody("templates/cached.html", "cached.html", map[string]string{"Name": "Test User"}, mockFS)
+	body, err := e.getMailBody("templates/cached.html", "cached.html", map[string]string{"Name": "Test User"})
 
 	assert.NoError(t, err)
 	// Should use the cached version, not the one from the file system
