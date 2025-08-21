@@ -12,6 +12,18 @@ import (
 
 const RESOURCE = "resource"
 
+type PaginationMedia struct {
+	Limit  int `json:"limit" doc:"The number of elements"`
+	Offset int `json:"offset" doc:"The list offset"`
+	Total  int `json:"total" doc:"The list total"`
+}
+
+type PaginationParameters struct {
+	Offset int      `query:"offset" default:"0" maximum:"1000000" minimum:"0"`
+	Limit  int      `query:"limit" default:"200" maximum:"1000000" minimum:"1"`
+	Sort   []string `query:"sort"`
+}
+
 type BodyResponse[T any] struct {
 	Body T
 }
