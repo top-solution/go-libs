@@ -12,16 +12,26 @@ import (
 
 const RESOURCE = "resource"
 
+// PaginationMedia is a base struct for pagination metadata in API responses
 type PaginationMedia struct {
 	Limit  int `json:"limit" doc:"The number of elements"`
 	Offset int `json:"offset" doc:"The list offset"`
 	Total  int `json:"total" doc:"The list total"`
 }
 
+// PaginationParameters is a base struct for pagination parameters in API requests
 type PaginationParameters struct {
 	Offset int      `query:"offset" default:"0" maximum:"1000000" minimum:"0"`
 	Limit  int      `query:"limit" default:"200" maximum:"1000000" minimum:"1"`
 	Sort   []string `query:"sort"`
+}
+
+// DownloadResult is a base struct for file download responses
+type DownloadResult struct {
+	Length      int64  `header:"Content-Length" doc:"The content length"`
+	Attachment  string `header:"Content-Disposition" doc:"The content disposition"`
+	ContentType string `header:"Content-Type" doc:"The content type"`
+	Body        []byte `doc:"The file content"`
 }
 
 type BodyResponse[T any] struct {
