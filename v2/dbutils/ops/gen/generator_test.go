@@ -711,3 +711,57 @@ type ListUsersRequest struct {
 	assert.Contains(t, generatedCode, `ParseFilter(cond, bob_gen.ColumnNames.Users.Count, op, rawValue, true)`)
 	assert.Contains(t, generatedCode, `ParseFilter(cond, bob_gen.ColumnNames.Users.Tags, op, rawValue, true)`)
 }
+
+func TestGenerator_ComplexFilterExpressions(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test input file with complex SQL expressions
+	testContent := `package requests
+
+// db:filter
+type ComplexRequest struct {
+	// db:filter "(CASE WHEN bom.pn = bom.enditem THEN 1 END)"
+	CaseExpression string ` + "`query:\"case_expr\"`" + `
+	// db:filter "COALESCE(users.name, users.email, 'Unknown')"
+	CoalesceExpr string ` + "`query:\"coalesce\"`" + `
+	// db:filter "COUNT(*) FILTER (WHERE status = 'active')" having
+	AggregateHaving string ` + "`query:\"aggregate\"`" + `
+	// db:filter "DATE_TRUNC('day', created_at)"
+	FunctionCall string ` + "`query:\"date_func\"`" + `
+	// db:filter "EXTRACT(EPOCH FROM NOW() - created_at)"
+	ExtractExpr string ` + "`query:\"extract\"`" + `
+}`
+
+	inputFile := filepath.Join(tmpDir, "requests.go")
+	err := os.WriteFile(inputFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("requests", tmpDir, "bob")
+
+	err = generator.GenerateFromFile(inputFile)
+	require.NoError(t, err)
+
+	// Check that the generated file exists and has the correct complex expressions
+	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
+	content, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	generatedCode := string(content)
+	
+	// Should contain the AddFilters method
+	assert.Contains(t, generatedCode, "func (c *ComplexRequest) AddFilters")
+	
+	// Check that complex expressions are properly captured
+	assert.Contains(t, generatedCode, `"(CASE WHEN bom.pn = bom.enditem THEN 1 END)"`)
+	assert.Contains(t, generatedCode, `"COALESCE(users.name, users.email, 'Unknown')"`)
+	assert.Contains(t, generatedCode, `"COUNT(*) FILTER (WHERE status = 'active')"`)
+	assert.Contains(t, generatedCode, `"DATE_TRUNC('day', created_at)"`)
+	assert.Contains(t, generatedCode, `"EXTRACT(EPOCH FROM NOW() - created_at)"`)
+	
+	// Check that having parameter is correctly applied
+	assert.Contains(t, generatedCode, `ParseFilter(cond, "(CASE WHEN bom.pn = bom.enditem THEN 1 END)", op, rawValue, false)`)
+	assert.Contains(t, generatedCode, `ParseFilter(cond, "COALESCE(users.name, users.email, 'Unknown')", op, rawValue, false)`)
+	assert.Contains(t, generatedCode, `ParseFilter(cond, "COUNT(*) FILTER (WHERE status = 'active')", op, rawValue, true)`)
+	assert.Contains(t, generatedCode, `ParseFilter(cond, "DATE_TRUNC('day', created_at)", op, rawValue, false)`)
+	assert.Contains(t, generatedCode, `ParseFilter(cond, "EXTRACT(EPOCH FROM NOW() - created_at)", op, rawValue, false)`)
+}

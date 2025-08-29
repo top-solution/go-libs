@@ -209,7 +209,7 @@ func (g *Generator) parseImportSpec(spec string) string {
 	return spec
 }
 
-var filterCommentRegex = regexp.MustCompile(`//\s*db:filter\s+([^\s]+)(?:\s+(.*?))?$`)
+var filterCommentRegex = regexp.MustCompile(`//\s*db:filter\s+(.+?)(?:\s+having)?$`)
 
 // parseStruct extracts filter field information from a struct
 func (g *Generator) parseStruct(name string, structType *ast.StructType) StructInfo {
@@ -228,13 +228,12 @@ func (g *Generator) parseStruct(name string, structType *ast.StructType) StructI
 		var column string
 		var having bool
 		for _, comment := range field.Doc.List {
+			// Check if comment contains "having" parameter
+			having = strings.Contains(comment.Text, " having")
+			
 			matches := filterCommentRegex.FindStringSubmatch(comment.Text)
 			if len(matches) > 1 {
 				column = strings.TrimSpace(matches[1])
-				// Check for optional "having" parameter
-				if len(matches) > 2 && strings.TrimSpace(matches[2]) == "having" {
-					having = true
-				}
 				break
 			}
 		}
