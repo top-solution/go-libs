@@ -16,4 +16,10 @@ type TestStruct struct {
 	Test2 *string `query:"test2"`
 	// db:filter "EEEI"
 	Test3 []string `query:"test3"`
+	// db:filter "group_col" having
+	Test4 string `query:"test4"`
+	// db:filter "having_ptr_col" having
+	Test5 *string `query:"test5"`
+	// db:filter "having_array_col" having
+	Test6 []string `query:"test6"`
 }

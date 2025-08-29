@@ -665,3 +665,49 @@ type ListUsersRequest struct {
 	assert.Contains(t, generatedStr, `"github.com/stephenafamo/bob/dialect/psql/dialect"`)
 	assert.Contains(t, generatedStr, `"github.com/top-solution/go-libs/v2/dbutils/ops/bobops"`)
 }
+
+func TestGenerator_HavingParameter(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test input file with having parameters
+	testContent := `package requests
+
+// db:filter
+type ListUsersRequest struct {
+	// db:filter bob_gen.ColumnNames.Users.Name
+	Name string ` + "`query:\"name\"`" + `
+	// db:filter bob_gen.ColumnNames.Users.Count having
+	Count string ` + "`query:\"count\"`" + `
+	// db:filter bob_gen.ColumnNames.Users.Email
+	Email *string ` + "`query:\"email\"`" + `
+	// db:filter bob_gen.ColumnNames.Users.Tags having
+	Tags []string ` + "`query:\"tags\"`" + `
+}`
+
+	inputFile := filepath.Join(tmpDir, "requests.go")
+	err := os.WriteFile(inputFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("requests", tmpDir, "bob")
+
+	err = generator.GenerateFromFile(inputFile)
+	require.NoError(t, err)
+
+	// Check that the generated file exists and has the correct having parameters
+	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
+	content, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	generatedCode := string(content)
+	
+	// Should contain the AddFilters method
+	assert.Contains(t, generatedCode, "func (l *ListUsersRequest) AddFilters")
+	
+	// Check that non-having filters use false
+	assert.Contains(t, generatedCode, `ParseFilter(cond, bob_gen.ColumnNames.Users.Name, op, rawValue, false)`)
+	assert.Contains(t, generatedCode, `ParseFilter(cond, bob_gen.ColumnNames.Users.Email, op, rawValue, false)`)
+	
+	// Check that having filters use true
+	assert.Contains(t, generatedCode, `ParseFilter(cond, bob_gen.ColumnNames.Users.Count, op, rawValue, true)`)
+	assert.Contains(t, generatedCode, `ParseFilter(cond, bob_gen.ColumnNames.Users.Tags, op, rawValue, true)`)
+}

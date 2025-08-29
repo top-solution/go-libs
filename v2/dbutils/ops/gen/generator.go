@@ -18,6 +18,7 @@ type FilterField struct {
 	Column     string // Database column name from comment
 	QueryParam string // Query parameter name from struct tag
 	Type       string // Field type
+	Having     bool   // Whether this filter should use HAVING instead of WHERE
 }
 
 // StructInfo contains information about a struct that needs filter generation
@@ -208,7 +209,7 @@ func (g *Generator) parseImportSpec(spec string) string {
 	return spec
 }
 
-var filterCommentRegex = regexp.MustCompile(`//\s*db:filter\s+(.+)`)
+var filterCommentRegex = regexp.MustCompile(`//\s*db:filter\s+([^\s]+)(?:\s+(.*?))?$`)
 
 // parseStruct extracts filter field information from a struct
 func (g *Generator) parseStruct(name string, structType *ast.StructType) StructInfo {
@@ -225,10 +226,15 @@ func (g *Generator) parseStruct(name string, structType *ast.StructType) StructI
 
 		// Check for db:filter comment
 		var column string
+		var having bool
 		for _, comment := range field.Doc.List {
 			matches := filterCommentRegex.FindStringSubmatch(comment.Text)
 			if len(matches) > 1 {
 				column = strings.TrimSpace(matches[1])
+				// Check for optional "having" parameter
+				if len(matches) > 2 && strings.TrimSpace(matches[2]) == "having" {
+					having = true
+				}
 				break
 			}
 		}
@@ -257,6 +263,7 @@ func (g *Generator) parseStruct(name string, structType *ast.StructType) StructI
 				Column:     column,
 				Type:       fieldType,
 				QueryParam: queryParam,
+				Having:     having,
 			})
 		}
 	}
@@ -386,7 +393,7 @@ func ({{.ReceiverName}} *{{.Name}}) AddFilters(q {{if eq $lib "bob"}}*[]bob.Mod[
 			return err
 		}
 
-		qmod, _, _, err := {{$structName}}ColumnsMap.Filterer.ParseFilter(cond, {{.Column}}, op, rawValue, false)
+		qmod, _, _, err := {{$structName}}ColumnsMap.Filterer.ParseFilter(cond, {{.Column}}, op, rawValue, {{.Having}})
 		if err != nil {
 			return err
 		}
@@ -398,7 +405,7 @@ func ({{.ReceiverName}} *{{.Name}}) AddFilters(q {{if eq $lib "bob"}}*[]bob.Mod[
 			return err
 		}
 
-		qmod, _, _, err := {{$structName}}ColumnsMap.Filterer.ParseFilter(cond, {{.Column}}, op, rawValue, false)
+		qmod, _, _, err := {{$structName}}ColumnsMap.Filterer.ParseFilter(cond, {{.Column}}, op, rawValue, {{.Having}})
 		if err != nil {
 			return err
 		}
@@ -411,7 +418,7 @@ func ({{.ReceiverName}} *{{.Name}}) AddFilters(q {{if eq $lib "bob"}}*[]bob.Mod[
 				return err
 			}
 
-			qmod, _, _, err := {{$structName}}ColumnsMap.Filterer.ParseFilter(cond, {{.Column}}, op, rawValue, false)
+			qmod, _, _, err := {{$structName}}ColumnsMap.Filterer.ParseFilter(cond, {{.Column}}, op, rawValue, {{.Having}})
 			if err != nil {
 				return err
 			}
