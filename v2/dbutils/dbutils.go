@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/pressly/goose/v3"
@@ -207,7 +208,16 @@ func (d *DB) Migrate(fsys fs.FS) (err error) {
 	}
 	d.fsys = fsys
 	goose.SetBaseFS(d.fsys)
-	goose.SetTableName(goose.DefaultTablename)
+
+	tableName := goose.DefaultTablename
+
+	// Specify schema when hinted by the configuration
+	if d.conf.Schema != "" {
+		schema, _, _ := strings.Cut(d.conf.Schema, ",")
+		tableName = schema + "." + tableName
+	}
+
+	goose.SetTableName(tableName)
 
 	// Goose wants to use the "sqlserver" driver, never "mssql"
 	driver := d.conf.Driver
