@@ -135,7 +135,7 @@ type WhereFilters map[string]string
 
 func (w WhereFilters) Parse(filter string) (op string, cond string, val string, err error) {
 	spl := strings.SplitN(filter, ":", 2)
-	op = spl[0]
+	op = strings.TrimSpace(spl[0])
 	rawValue := ""
 	if len(spl) < 2 {
 		if !IsUnaryOp(op) {

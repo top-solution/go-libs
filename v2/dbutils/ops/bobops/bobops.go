@@ -36,7 +36,7 @@ func parseFilter(filter, alias string, op string, rawValue string, having bool) 
 			var value []interface{}
 			stringValue := strings.Split(rawValue, ",")
 			for _, v := range stringValue {
-				value = append(value, v)
+				value = append(value, strings.TrimSpace(v))
 			}
 
 			q := strings.ReplaceAll(filter, "{}", alias)
@@ -53,7 +53,7 @@ func parseFilter(filter, alias string, op string, rawValue string, having bool) 
 		var value []interface{}
 		stringValue := strings.Split(rawValue, ",")
 		for _, v := range stringValue {
-			value = append(value, v)
+			value = append(value, strings.TrimSpace(v))
 		}
 
 		q := strings.ReplaceAll(filter, "{}", alias)

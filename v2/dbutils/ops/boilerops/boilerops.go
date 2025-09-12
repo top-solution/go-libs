@@ -31,7 +31,7 @@ func (b *BoilFilterer) ParseFilter(filter, alias string, op string, rawValue str
 		var value []interface{}
 		stringValue := strings.Split(rawValue, ",")
 		for _, v := range stringValue {
-			value = append(value, v)
+			value = append(value, strings.TrimSpace(v))
 		}
 		if dbutils.CurrentDriver == dbutils.PostgresDriver {
 			q := strings.ReplaceAll(filter, "{}", alias)
