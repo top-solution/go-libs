@@ -172,8 +172,8 @@ var msSQLWhereFilters = WhereFilters{
 var postgresWhereFilters = WhereFilters{
 	"eq":         "{} = ?",
 	"neq":        "{} != ?",
-	"like":       "{} ILIKE ? ESCAPE '_'",
-	"notLike":    "{} NOT ILIKE ? ESCAPE '_' OR {} IS NULL",
+	"like":       "{}::text ILIKE ? ESCAPE '_'",
+	"notLike":    "{}::text NOT ILIKE ? ESCAPE '_' OR {} IS NULL",
 	"lt":         "{} < ?",
 	"lte":        "{} <= ?",
 	"gt":         "{} > ?",
