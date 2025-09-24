@@ -4,10 +4,10 @@ import (
 	"errors"
 	"strings"
 
+	. "github.com/aarondl/sqlboiler/v4/queries/qm"
 	"github.com/lib/pq"
 	"github.com/top-solution/go-libs/v2/dbutils"
 	"github.com/top-solution/go-libs/v2/dbutils/ops"
-	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // NewBoilFilterMap creates a new FilterMap for sqlboiler's QueryMods

@@ -230,7 +230,7 @@ func (g *Generator) parseStruct(name string, structType *ast.StructType) StructI
 		for _, comment := range field.Doc.List {
 			// Check if comment contains "having" parameter
 			having = strings.Contains(comment.Text, " having")
-			
+
 			matches := filterCommentRegex.FindStringSubmatch(comment.Text)
 			if len(matches) > 1 {
 				column = strings.TrimSpace(matches[1])
@@ -370,7 +370,7 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
 	"github.com/top-solution/go-libs/v2/dbutils/ops/bobops"
 	{{ else if eq .FilterType "boiler"}}"github.com/top-solution/go-libs/v2/dbutils/ops/boilerops"
-    "github.com/volatiletech/sqlboiler/v4/queries/qm"
+    "github.com/aarondl/sqlboiler/v4/queries/qm"
 	{{end}}
 {{range .AdditionalImports}}	{{.}}
 {{end}}){{$lib := .FilterType}}

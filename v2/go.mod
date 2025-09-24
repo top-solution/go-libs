@@ -3,6 +3,7 @@ module github.com/top-solution/go-libs/v2
 go 1.24
 
 require (
+	github.com/aarondl/sqlboiler/v4 v4.19.5
 	github.com/ardanlabs/conf/v3 v3.4.0
 	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/goccy/go-yaml v1.15.19
@@ -14,14 +15,15 @@ require (
 	github.com/serjlee/frequency v1.1.0
 	github.com/stephenafamo/bob v0.30.0
 	github.com/stretchr/testify v1.10.0
-	github.com/volatiletech/sqlboiler/v4 v4.18.0
 	golang.org/x/text v0.25.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 )
 
 require (
+	github.com/aarondl/inflect v0.0.2 // indirect
 	github.com/aarondl/json v0.0.0-20221020222930-8b0db17ef1bf // indirect
 	github.com/aarondl/opt v0.0.0-20230114172057-b91f370c41f0 // indirect
+	github.com/aarondl/strmangle v0.0.9 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.2.0 // indirect
 	github.com/friendsofgo/errors v0.9.2 // indirect
@@ -34,8 +36,6 @@ require (
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/stephenafamo/scan v0.6.1 // indirect
-	github.com/volatiletech/inflect v0.0.1 // indirect
-	github.com/volatiletech/strmangle v0.0.6 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
