@@ -37,10 +37,10 @@ type ListDCRsRequest struct {
     Sort []string `query:"sort"`  // <----- this field is referenced by sortField
 }
 ```
+
 Of course, this is assuming Huma. There is no support for Goa, sorry.
 
 **Note on `sortBy`**: When you specify `sortBy` on a field, the generator creates a separate `SortColumnsMap` that maps query parameters to their sort columns. This is useful when the column you want to sort by is different from the column you filter on. Fields without `sortBy` will use their filter column for sorting.
-
 
 ### 2. Add go generate directive
 

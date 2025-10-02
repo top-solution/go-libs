@@ -308,7 +308,12 @@ func (g *Generator) extractQueryTag(tag string) string {
 	queryRegex := regexp.MustCompile(`query:"([^"]*)"`)
 	matches := queryRegex.FindStringSubmatch(tag)
 	if len(matches) > 1 {
-		return matches[1]
+		// Split by comma and return the first value (standard struct tag format)
+		value := matches[1]
+		if parts := strings.Split(value, ","); len(parts) > 0 {
+			return strings.TrimSpace(parts[0])
+		}
+		return value
 	}
 
 	return ""

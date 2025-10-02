@@ -929,3 +929,52 @@ type SimpleRequest struct {
 	// AddSorting should use regular ColumnsMap
 	assert.Contains(t, generatedCode, "SimpleRequestColumnsMap.AddSorting(query, s.Sort)")
 }
+
+func TestGenerator_QueryTagWithComma(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test input file with comma-separated query tags
+	testContent := `package requests
+
+// db:filter
+type TestRequest struct {
+	// db:filter bob_gen.ColumnNames.Users.Name
+	Name string ` + "`query:\"name,omitempty\"`" + `
+	// db:filter bob_gen.ColumnNames.Users.Email
+	Email string ` + "`query:\"email,required\"`" + `
+}`
+
+	inputFile := filepath.Join(tmpDir, "requests.go")
+	err := os.WriteFile(inputFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("requests", tmpDir, "bob")
+
+	// Parse and verify
+	structs, err := generator.parseFile(inputFile)
+	require.NoError(t, err)
+	require.Len(t, structs, 1)
+
+	fields := structs[0].Fields
+	require.Len(t, fields, 2)
+
+	// Should extract only the first part before the comma
+	assert.Equal(t, "name", fields[0].QueryParam)
+	assert.Equal(t, "email", fields[1].QueryParam)
+
+	// Generate and verify
+	err = generator.GenerateFromFile(inputFile)
+	require.NoError(t, err)
+
+	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
+	content, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	generatedCode := string(content)
+
+	// Should use the name without the comma-separated options
+	assert.Contains(t, generatedCode, `"name": bob_gen.ColumnNames.Users.Name`)
+	assert.Contains(t, generatedCode, `"email": bob_gen.ColumnNames.Users.Email`)
+	assert.NotContains(t, generatedCode, "omitempty")
+	assert.NotContains(t, generatedCode, "required")
+}
