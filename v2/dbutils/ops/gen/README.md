@@ -23,20 +23,24 @@ Add `db:filter` comments to fields that should be filterable:
 type ListDCRsRequest struct {
     // db:filter bob_gen.ColumnNames.DCRS.Type
     Type   string `query:"type"`
-    // db:filter bob_gen.ColumnNames.DCRS.Status
-    Status string `query:"status"`
+    // db:filter bob_gen.ColumnNames.DCRS.Status sortBy "dcrs.status_order"
+    Status string `query:"status"`  // <----- sortBy is optional, to specify a different column for sorting
     // db:filter bob_gen.ColumnNames.DCRS.CreatedBy
     CreatedBy *string `query:"created_by"`
     // db:filter bob_gen.ColumnNames.DCRS.Tags
     Tags []string `query:"tags"`
-    
+
     // Regular fields without filter comments are ignored
     Limit  int `query:"limit"`
     Offset int `query:"offset"`
+
+    Sort []string `query:"sort"`  // <----- this field is referenced by sortField
 }
 ```
+
 Of course, this is assuming Huma. There is no support for Goa, sorry.
 
+**Note on `sortBy`**: When you specify `sortBy` on a field, the generator creates a separate `SortColumnsMap` that maps query parameters to their sort columns. This is useful when the column you want to sort by is different from the column you filter on. Fields without `sortBy` will use their filter column for sorting.
 
 ### 2. Add go generate directive
 
