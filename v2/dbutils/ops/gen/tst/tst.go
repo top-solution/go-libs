@@ -18,9 +18,9 @@ var tablename = struct {
 // db:filter sortField Sort
 type TestStruct struct {
 	Sortable
-	// db:filter "stuff"
+	// db:filter "stuff" sortBy "sorted_stuff"
 	Test string `query:"test"`
-	// db:filter fmt.Sprintf("heee")
+	// db:filter fmt.Sprintf("heee") sortBy fmt.Sprintf("sorted_heee")
 	Test2 *string `query:"test2"`
 	// db:filter "EEEI"
 	Test3 []string `query:"test3"`

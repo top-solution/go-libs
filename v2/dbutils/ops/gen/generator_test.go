@@ -765,3 +765,167 @@ type ComplexRequest struct {
 	assert.Contains(t, generatedCode, `ParseFilter(cond, "DATE_TRUNC('day', created_at)", op, rawValue, false)`)
 	assert.Contains(t, generatedCode, `ParseFilter(cond, "EXTRACT(EPOCH FROM NOW() - created_at)", op, rawValue, false)`)
 }
+
+func TestGenerator_SortByFieldMapping(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test input file with sortBy mappings
+	testContent := `package requests
+
+// db:filter
+// db:filter sortField Sort
+type ProductsRequest struct {
+	// db:filter bob_gen.ColumnNames.Products.Name sortBy "products.name"
+	ProductName string ` + "`query:\"product_name\"`" + `
+	// db:filter bob_gen.ColumnNames.Products.Price sortBy "products.price"
+	Price string ` + "`query:\"price\"`" + `
+	// db:filter bob_gen.ColumnNames.Products.Category
+	Category string ` + "`query:\"category\"`" + `
+	Sort []string ` + "`query:\"sort\"`" + `
+}`
+
+	inputFile := filepath.Join(tmpDir, "requests.go")
+	err := os.WriteFile(inputFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("requests", tmpDir, "bob")
+
+	// Parse the file to check struct info
+	structs, err := generator.parseFile(inputFile)
+	require.NoError(t, err)
+	require.Len(t, structs, 1)
+
+	// Verify that sortBy is extracted correctly
+	fields := structs[0].Fields
+	require.Len(t, fields, 3)
+
+	assert.Equal(t, "ProductName", fields[0].Name)
+	assert.Equal(t, `"products.name"`, fields[0].SortBy)
+
+	assert.Equal(t, "Price", fields[1].Name)
+	assert.Equal(t, `"products.price"`, fields[1].SortBy)
+
+	assert.Equal(t, "Category", fields[2].Name)
+	assert.Equal(t, "", fields[2].SortBy) // No sortBy specified
+
+	// Generate code and verify the SortColumnsMap is created
+	err = generator.GenerateFromFile(inputFile)
+	require.NoError(t, err)
+
+	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
+	content, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	generatedCode := string(content)
+
+	// Should contain both ColumnsMap and SortColumnsMap
+	assert.Contains(t, generatedCode, "var ProductsRequestColumnsMap")
+	assert.Contains(t, generatedCode, "var ProductsRequestSortColumnsMap")
+
+	// ColumnsMap should use the regular columns
+	assert.Contains(t, generatedCode, `"product_name": bob_gen.ColumnNames.Products.Name`)
+	assert.Contains(t, generatedCode, `"price": bob_gen.ColumnNames.Products.Price`)
+	assert.Contains(t, generatedCode, `"category": bob_gen.ColumnNames.Products.Category`)
+
+	// SortColumnsMap should use sortBy columns where specified
+	assert.Contains(t, generatedCode, `ProductsRequestSortColumnsMap`)
+	assert.Contains(t, generatedCode, `"product_name": "products.name"`)
+	assert.Contains(t, generatedCode, `"price": "products.price"`)
+	assert.Contains(t, generatedCode, `"category": bob_gen.ColumnNames.Products.Category`) // Falls back to filter column
+
+	// AddSorting should use SortColumnsMap
+	assert.Contains(t, generatedCode, "func (p *ProductsRequest) AddSorting")
+	assert.Contains(t, generatedCode, "ProductsRequestSortColumnsMap.AddSorting(query, p.Sort)")
+}
+
+func TestGenerator_SortByWithHaving(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test input file with sortBy and having
+	testContent := `package requests
+
+// db:filter
+// db:filter sortField Sort
+type AggregatesRequest struct {
+	// db:filter "COUNT(*)" having sortBy "count_value"
+	Count string ` + "`query:\"count\"`" + `
+	// db:filter bob_gen.ColumnNames.Users.Name
+	Name string ` + "`query:\"name\"`" + `
+	Sort []string ` + "`query:\"sort\"`" + `
+}`
+
+	inputFile := filepath.Join(tmpDir, "requests.go")
+	err := os.WriteFile(inputFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("requests", tmpDir, "bob")
+
+	// Parse and verify
+	structs, err := generator.parseFile(inputFile)
+	require.NoError(t, err)
+	require.Len(t, structs, 1)
+
+	fields := structs[0].Fields
+	require.Len(t, fields, 2)
+
+	assert.Equal(t, "Count", fields[0].Name)
+	assert.Equal(t, `"count_value"`, fields[0].SortBy)
+	assert.True(t, fields[0].Having)
+
+	assert.Equal(t, "Name", fields[1].Name)
+	assert.Equal(t, "", fields[1].SortBy)
+	assert.False(t, fields[1].Having)
+
+	// Generate and verify
+	err = generator.GenerateFromFile(inputFile)
+	require.NoError(t, err)
+
+	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
+	content, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	generatedCode := string(content)
+
+	// Should have SortColumnsMap since sortBy is present
+	assert.Contains(t, generatedCode, "var AggregatesRequestSortColumnsMap")
+	assert.Contains(t, generatedCode, `"count": "count_value"`)
+	assert.Contains(t, generatedCode, `"name": bob_gen.ColumnNames.Users.Name`)
+}
+
+func TestGenerator_NoSortByNoSortColumnsMap(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test input file without any sortBy
+	testContent := `package requests
+
+// db:filter
+// db:filter sortField Sort
+type SimpleRequest struct {
+	// db:filter bob_gen.ColumnNames.Users.Name
+	Name string ` + "`query:\"name\"`" + `
+	// db:filter bob_gen.ColumnNames.Users.Email
+	Email string ` + "`query:\"email\"`" + `
+	Sort []string ` + "`query:\"sort\"`" + `
+}`
+
+	inputFile := filepath.Join(tmpDir, "requests.go")
+	err := os.WriteFile(inputFile, []byte(testContent), 0644)
+	require.NoError(t, err)
+
+	generator := NewGenerator("requests", tmpDir, "bob")
+
+	err = generator.GenerateFromFile(inputFile)
+	require.NoError(t, err)
+
+	outputFile := filepath.Join(tmpDir, "requests_filters.gen.go")
+	content, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	generatedCode := string(content)
+
+	// Should NOT have SortColumnsMap when no sortBy is specified
+	assert.NotContains(t, generatedCode, "SortColumnsMap")
+
+	// AddSorting should use regular ColumnsMap
+	assert.Contains(t, generatedCode, "SimpleRequestColumnsMap.AddSorting(query, s.Sort)")
+}
