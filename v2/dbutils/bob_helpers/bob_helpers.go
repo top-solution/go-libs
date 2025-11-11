@@ -108,3 +108,9 @@ func TableWithPrefix(alias string, col expr.ColumnsExpr) expr.ColumnsExpr {
 func TableWithPrefixAndParent(alias string, col expr.ColumnsExpr) expr.ColumnsExpr {
 	return col.WithPrefix(alias + ".").WithParent(alias)
 }
+
+// GroupByWithParent groups by columns and sets their parent to the given alias.
+// Useful for grouping joined table columns in nested mappings.
+func GroupByWithParent(alias string, col expr.ColumnsExpr) bob.Mod[*dialect.SelectQuery] {
+	return sm.GroupBy(col.WithParent(alias).DisableAlias())
+}
