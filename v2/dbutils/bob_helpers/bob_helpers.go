@@ -125,7 +125,6 @@ func Scan[T any](opts ...scan.MappingOption) scan.Mapper[T] {
 }
 
 // nullTypeConverter is a custom TypeConverter that skips NULL values during scanning even if the destination type does not support NULLs.
-// Example usage:  psql.Select(query...), scan.StructMapper[MyStruct](scan.WithTypeConverter(bob_helpers.NullTypeConverter{}))
 // This was stolen from https://github.com/stephenafamo/bob/blame/96da65fd88a50ae532079e8ea69746183f4af3a1/orm/load.go#L380
 type nullTypeConverter struct{}
 
