@@ -5,11 +5,13 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/aarondl/opt"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 	"github.com/stephenafamo/bob/expr"
+	"github.com/stephenafamo/scan"
 )
 
 // Ptr returns a pointer to the given value.
@@ -113,4 +115,48 @@ func TableWithPrefixAndParent(alias string, col expr.ColumnsExpr) expr.ColumnsEx
 // Useful for grouping joined table columns in nested mappings.
 func GroupByWithParent(alias string, col expr.ColumnsExpr) bob.Mod[*dialect.SelectQuery] {
 	return sm.GroupBy(col.WithParent(alias).DisableAlias())
+}
+
+// Scan is a helper function that creates a StructMapper with NullTypeConverter, so that NULL values are skipped during scanning.
+// Example usage: bob.All(ctx, exec, psql.Select(query...), bob_helpers.Scan[BottomUpRow]())
+func Scan[T any](opts ...scan.MappingOption) scan.Mapper[T] {
+	allOpts := append([]scan.MappingOption{scan.WithTypeConverter(nullTypeConverter{})}, opts...)
+	return scan.StructMapper[T](allOpts...)
+}
+
+// nullTypeConverter is a custom TypeConverter that skips NULL values during scanning even if the destination type does not support NULLs.
+// Example usage:  psql.Select(query...), scan.StructMapper[MyStruct](scan.WithTypeConverter(bob_helpers.NullTypeConverter{}))
+// This was stolen from https://github.com/stephenafamo/bob/blame/96da65fd88a50ae532079e8ea69746183f4af3a1/orm/load.go#L380
+type nullTypeConverter struct{}
+
+type wrapper struct {
+	IsNull bool
+	V      any
+}
+
+// Scan implements the sql.Scanner interface. If the wrapped type implements
+// sql.Scanner then it will call that.
+func (v *wrapper) Scan(value any) error {
+	if value == nil {
+		v.IsNull = true
+		return nil
+	}
+
+	if scanner, ok := v.V.(sql.Scanner); ok {
+		return scanner.Scan(value)
+	}
+
+	return opt.ConvertAssign(v.V, value)
+}
+
+func (nullTypeConverter) TypeToDestination(typ reflect.Type) reflect.Value {
+	val := reflect.ValueOf(&wrapper{
+		V: reflect.New(typ).Interface(),
+	})
+
+	return val
+}
+
+func (nullTypeConverter) ValueFromDestination(val reflect.Value) reflect.Value {
+	return val.Elem().FieldByName("V").Elem().Elem()
 }
