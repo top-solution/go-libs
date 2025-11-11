@@ -9,6 +9,7 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"github.com/stephenafamo/bob/expr"
 )
 
 // Ptr returns a pointer to the given value.
@@ -63,37 +64,6 @@ func isZero[T any](v T) bool {
 	return reflect.DeepEqual(v, zero)
 }
 
-// TableAliasToPrefix returns a properly formatted prefix string for use in
-// bob-generated SQL queries.
-//
-// In bob, you can use `--prefix:` annotations in your SQL files to map
-// columns to a Go struct that uses a specific table alias. This function
-// helps generate the correct prefix format (`"<alias>."`) expected by bob
-// for that mapping.
-//
-// Example usage:
-//
-//	prefix := TableAliasToPrefix("posts")
-//	// prefix == "posts."
-//
-// In SQL (used by bob code generation):
-//
-//	--prefix:posts.
-//	posts.id, posts.title
-//
-// This allows bob to correctly bind the selected columns to fields in a Go
-// struct representing the `posts` table.
-//
-// Parameters:
-//   - alias: the alias or table name to use as prefix.
-//
-// Returns:
-//   - A string in the format "<alias>." if alias is not empty,
-//     or an empty string otherwise.
-func TableAliasToPrefix(alias string) string {
-	return alias + "."
-}
-
 // IncludeSubqueryAsCTE appends a subquery as a Common Table Expression (CTE)
 // to the provided query modifiers slice.
 //
@@ -125,4 +95,16 @@ func IncludeSubqueryAsCTE(q *[]bob.Mod[*dialect.SelectQuery], subQuery []bob.Mod
 	*q = append(*q,
 		sm.With(alias).As(sub),
 	)
+}
+
+// TableWithPrefix prefixes all columns in the given ColumnsExpr with the table alias.
+// Equivalent to using `--prefix:<alias>.` in bob SQL files.
+func TableWithPrefix(alias string, col expr.ColumnsExpr) expr.ColumnsExpr {
+	return col.WithPrefix(alias + ".")
+}
+
+// TableWithPrefixAndParent prefixes all columns and sets the parent to the alias.
+// Useful for nested structs when mapping joined tables.
+func TableWithPrefixAndParent(alias string, col expr.ColumnsExpr) expr.ColumnsExpr {
+	return col.WithPrefix(alias + ".").WithParent(alias)
 }
