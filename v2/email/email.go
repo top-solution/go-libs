@@ -30,6 +30,7 @@ type EmailConfig struct {
 	SMTPUser          string   `yaml:"smtp_user"`
 	TemplateDirectory string   `yaml:"template_directory"`
 	Whitelist         []string `yaml:"whitelist"`
+	Blacklist         []string `yaml:"blacklist"`
 	SkipTLS           bool     `yaml:"skip_tls"`
 	CacheTemplates    bool     `yaml:"cache_templates"`
 }
@@ -56,13 +57,13 @@ func (e *EmailManager) SendEmail(emails ...*Email) error {
 		em.To = []string{}
 		em.CC = []string{}
 		for _, to := range toRecipients {
-			if len(e.config.Whitelist) == 0 || stringContains(e.config.Whitelist, to) {
+			if (len(e.config.Whitelist) == 0 || stringContains(e.config.Whitelist, to)) && !stringContains(e.config.Blacklist, to) {
 				em.To = append(em.To, to)
 			}
 		}
 
 		for _, cc := range ccRecipients {
-			if len(e.config.Whitelist) == 0 || stringContains(e.config.Whitelist, cc) {
+			if (len(e.config.Whitelist) == 0 || stringContains(e.config.Whitelist, cc)) && !stringContains(e.config.Blacklist, cc) {
 				em.CC = append(em.CC, cc)
 			}
 		}
