@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/ory/ladon"
@@ -223,5 +224,50 @@ func TestInSetCondition(t *testing.T) {
 				t.Fatalf("fulfill result should be %v, got %v", tc.Fulfills, result)
 			}
 		})
+	}
+}
+
+func TestLadonWardenHighConcurrency(t *testing.T) {
+	ctx := context.TODO()
+	l := NewLadon()
+	err := l.LoadPoliciesFromJSONS("_policies", os.DirFS("./testdata"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const numGoroutines = 100
+	const numRequestsPerGoroutine = 100
+
+	requests := []*ladon.Request{
+		{Action: "pass", Resource: "test", Subject: "this"},
+		{Action: "pass", Resource: "test", Subject: "that"},
+	}
+
+	var wg sync.WaitGroup
+	errChan := make(chan error, numGoroutines*numRequestsPerGoroutine)
+
+	for i := range numGoroutines {
+		wg.Add(1)
+		go func(goroutineID int) {
+			defer wg.Done()
+			for j := range numRequestsPerGoroutine {
+				req := requests[(goroutineID+j)%len(requests)]
+				if err := l.IsAllowed(ctx, req); err != nil {
+					errChan <- fmt.Errorf("goroutine %d, request %d: %w", goroutineID, j, err)
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	var errors []error
+	for err := range errChan {
+		errors = append(errors, err)
+	}
+
+	if len(errors) > 0 {
+		t.Errorf("got %d errors during concurrent access, first error: %v", len(errors), errors[0])
 	}
 }
